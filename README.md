@@ -1,7 +1,7 @@
 # OpenWrt snapshots for Jio Router AX6000 (JIDU6J11)
 
-[![Build](https://github.com/SahilB69/jidu6j11-openwrt/actions/workflows/build.yml/badge.svg)](https://github.com/SahilB69/jidu6j11-openwrt/actions/workflows/build.yml)
-[![Latest release](https://img.shields.io/github/v/release/SahilB69/jidu6j11-openwrt?label=latest%20snapshot)](https://github.com/SahilB69/jidu6j11-openwrt/releases/latest)
+[![Build](https://github.com/Santhu195/jidu6j11-openwrt/actions/workflows/build.yml/badge.svg)](https://github.com/Santhu195/jidu6j11-openwrt/actions/workflows/build.yml)
+[![Latest release](https://img.shields.io/github/v/release/Santhu195/jidu6j11-openwrt?label=latest%20snapshot)](https://github.com/Santhu195/jidu6j11-openwrt/releases/latest)
 
 Unofficial daily OpenWrt snapshot builds for the Jio Router AX6000 (JIDU6J11, IPQ9554), covering all six SKUs. Each build adds the device support that isn't in official OpenWrt yet, a few extra patches, and a set of useful packages.
 
@@ -30,7 +30,7 @@ These differences affect Wi-Fi range and thermals, so keep them in mind when com
 
 ## Downloads
 
-Builds are published on the [Releases page](https://github.com/SahilB69/jidu6j11-openwrt/releases) as `snapshot-YYYYMMDD`. The last 7 daily releases are kept, and older ones are deleted automatically. Each release contains:
+Builds are published on the [Releases page](https://github.com/Santhu195/jidu6j11-openwrt/releases) as `snapshot-YYYYMMDD-RUNID`. The last 7 daily releases are kept, and older ones are deleted automatically. Each release contains:
 
 - **Sysupgrade images**, one per SKU. Pick the one that matches your device.
 - **`initramfs-uImage.itb`**, an image that boots from RAM. Use it for a first install or for recovery.
@@ -50,9 +50,9 @@ GitHub also adds a "Source code" archive to every release. It only holds this re
 - **OpenWrt `main` with device support merged in.** The Jio AX6000 isn't in official snapshots yet, so each build merges [PR #26498](https://github.com/openwrt/openwrt/pull/26498) on top of the current `main`. This goes away once the PR is merged upstream.
 - **Custom Wi-Fi board data and driver patches.** Board files in `bdf/` are copied into the `ipq-wifi` package, and ath11k patches in `patches/ath11k/` are added to the mac80211 package. These are changes that can't go upstream or aren't merged yet.
 - **iwinfo [PR #51](https://github.com/openwrt/iwinfo/pull/51).** It's downloaded and applied at build time. It adds the IPQ9574 device ID.
-- **Patched Wi-Fi regulatory domain.** A custom ath11k patch provides a merged FCC regulatory domain, enabling up to 30 dBm transmit power across supported 5 GHz channels and channel widths.
+- **Regulatory compliance.** The build does not force an FCC/Panama regulatory domain. Set the correct country (IN in India) and let the firmware and regulatory database enforce channel, DFS and power restrictions.
 - **Wi-Fi enabled by default.** A `uci-defaults` script automatically enables all configured Wi-Fi radios and interfaces on first boot.
-- **Extra packages.** USB storage and network support, common filesystems, VPN and traffic-shaping tools, a few LuCI apps and handy command-line tools are built into the image. The current list is in [`config/extra-packages.txt`](config/extra-packages.txt). Kernel modules that aren't in the image can't be installed later, because there is no package feed for these builds yet.
+- **Extra packages.** USB storage and network support, Btrfs kernel and userspace tools, VPN and traffic-shaping tools, SQM/CAKE, QoSmate prerequisites, and handy command-line tools are built into the image. QoSmate itself is not installed. The current list is in [`config/extra-packages.txt`](config/extra-packages.txt). Kernel modules that aren't in the image can't be installed later, because there is no package feed for these builds yet.
 
 ## How the builds work
 
