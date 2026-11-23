@@ -16,7 +16,6 @@ This alias is intentionally only applied to the JIDU6611 profile.
  1 file changed, 2 insertions(+)
 
 diff --git a/target/linux/qualcommbe/image/ipq95xx.mk b/target/linux/qualcommbe/image/ipq95xx.mk
-index 1111111111..2222222222 100644
 --- a/target/linux/qualcommbe/image/ipq95xx.mk
 +++ b/target/linux/qualcommbe/image/ipq95xx.mk
 @@ -83,6 +83,8 @@ define Device/jiorouter_ax6000-jidu6611
