@@ -50,8 +50,48 @@ jobs:
           for n in $IWINFO_PRS; do
             iw="$iw $(git ls-remote https://github.com/openwrt/iwinfo "refs/pull/$n/head" | cut -f1)"
           done
+
+          # Hash every active feed revision too. OpenWrt main, LuCI, routing,
+          # telephony and video feeds can advance independently of main.
+          feeds_conf=$(mktemp)
+          curl -fsSL "https://raw.githubusercontent.com/openwrt/openwrt/$up/feeds.conf.default" -o "$feeds_conf"
+          for f in feeds.conf.default.d/*; do
+            [ -f "$f" ] || continue
+            cat "$f" >> "$feeds_conf"
+          done
+          feed_versions=""
+          while read -r feed_type feed_name feed_url _; do
+            case "$feed_type" in
+              src-git|src-git-full)
+                if [ "$feed_name" = "packages" ] && [ -n "$PACKAGES_COMMIT" ]; then
+                  feed_rev="$PACKAGES_COMMIT"
+                elif [[ "$feed_url" == *^* ]]; then
+                  feed_rev="${feed_url##*^}"
+                else
+                  feed_remote="$feed_url"
+                  feed_branch=""
+                  if [[ "$feed_url" == *";branch="* ]]; then
+                    feed_remote="${feed_url%%;branch=*}"
+                    feed_branch="${feed_url##*;branch=}"
+                  fi
+                  if [ -n "$feed_branch" ]; then
+                    feed_rev=$(git ls-remote "$feed_remote" "refs/heads/$feed_branch" | cut -f1)
+                  else
+                    feed_rev=$(git ls-remote "$feed_remote" HEAD | cut -f1)
+                  fi
+                fi
+                if [ -z "$feed_rev" ]; then
+                  echo "::error::Could not resolve revision for feed $feed_name ($feed_url)"
+                  exit 1
+                fi
+                feed_versions="$feed_versions $feed_name=$feed_rev"
+                ;;
+            esac
+          done < "$feeds_conf"
+          rm -f "$feeds_conf"
+
           own=$(git ls-tree -r HEAD -- config patches files bdf feeds.conf.default.d scripts .github | sha256sum | cut -d' ' -f1)
-          hash=$(echo "$up $pr $iw $PACKAGES_COMMIT $own" | sha256sum | cut -c1-16)
+          hash=$(printf '%s\n' "$up" "$pr" "$iw" "$feed_versions" "$own" | sha256sum | cut -c1-16)
 
           last=$(gh release view --json body -q .body 2>/dev/null | sed -n 's/.*Build-Hash: //p' | head -n1 || true)
           echo "current=$hash last=$last"
