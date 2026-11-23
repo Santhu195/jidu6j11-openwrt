@@ -62,6 +62,19 @@ lua
 jq
 coreutils-sleep
 
+
+# --- DNS/DHCP and wireless utility variants ---
+# Select the full variants instead of the default lightweight binaries.
+-dnsmasq
+dnsmasq-full
+-iw
+iw-full
+iwinfo
+
+# --- Jool NAT64 / SIIT ---
+kmod-jool-netfilter
+jool-tools-netfilter
+
 # --- Core services ---
 adguardhome
 tailscale
