@@ -30,7 +30,7 @@ These differences affect Wi-Fi range and thermals, so keep them in mind when com
 
 ## Downloads
 
-Builds are published on the [Releases page](https://github.com/Santhu195/jidu6j11-openwrt/releases) as `snapshot-YYYYMMDD-RUNID`. The last 7 daily releases are kept, and older ones are deleted automatically. Each release contains:
+Builds are published on the [Releases page](https://github.com/Santhu195/jidu6j11-openwrt/releases) as `snapshot-YYYYMMDD-RUNID`. The latest 7 releases are kept, and older ones are deleted automatically. Each release contains:
 
 - **Sysupgrade images**, one per SKU. Pick the one that matches your device.
 - **`initramfs-uImage.itb`**, an image that boots from RAM. Use it for a first install or for recovery.
