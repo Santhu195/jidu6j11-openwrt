@@ -13,7 +13,7 @@ library so /usr/bin/iwinfo is present in the image.
 
 ---
  package/network/utils/iwinfo/Makefile | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
+ 1 file changed, 5 insertions(+), 11 deletions(-)
 
 diff --git a/package/network/utils/iwinfo/Makefile b/package/network/utils/iwinfo/Makefile
 --- a/package/network/utils/iwinfo/Makefile
