@@ -12,6 +12,7 @@ usbutils
 
 # --- Filesystems and charset support for USB drives ---
 kmod-fs-btrfs
+btrfs-progs
 kmod-fs-ext4
 kmod-fs-vfat
 kmod-fs-exfat
@@ -25,6 +26,12 @@ kmod-usb-net-cdc-ether
 kmod-usb-net-rndis
 kmod-usb-net-rtl8152
 kmod-usb-net-asix-ax88179
+
+# --- Previously installed optional kernel features ---
+kmod-hwmon-pwmfan
+kmod-hid
+kmod-nf-nat6
+kmod-ip6tables
 
 # --- Network kmods ---
 kmod-wireguard
