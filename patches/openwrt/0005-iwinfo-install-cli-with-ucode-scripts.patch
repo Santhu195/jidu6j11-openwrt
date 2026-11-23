@@ -12,13 +12,14 @@ ucode Wi-Fi scripts as configured, but install the CLI and its runtime
 library so /usr/bin/iwinfo is present in the image.
 
 ---
- package/network/utils/iwinfo/Makefile | 7 +++----
+ package/network/utils/iwinfo/Makefile | 16 +++++-----------
  1 file changed, 5 insertions(+), 11 deletions(-)
 
 diff --git a/package/network/utils/iwinfo/Makefile b/package/network/utils/iwinfo/Makefile
 --- a/package/network/utils/iwinfo/Makefile
 +++ b/package/network/utils/iwinfo/Makefile
 @@ -62,6 +62,6 @@ define Package/iwinfo
+ define Package/iwinfo
    SECTION:=utils
    CATEGORY:=Utilities
    TITLE:=Generalized Wireless Information utility
