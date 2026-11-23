@@ -168,7 +168,7 @@ jobs:
 
         # Keep build configuration and package manifests for post-build auditing.
         find "$d" -maxdepth 1 -type f \
-          \\( -name '*.manifest' -o -name 'config.buildinfo' -o -name 'feeds.buildinfo' -o -name 'version.buildinfo' -o -name 'profiles.json' \\) \
+          \( -name '*.manifest' -o -name 'config.buildinfo' -o -name 'feeds.buildinfo' -o -name 'version.buildinfo' -o -name 'profiles.json' \) \
           -exec cp {} out/ \;
 
         # Check the legacy tar directory expected by the currently installed JIDU6J11 image.
