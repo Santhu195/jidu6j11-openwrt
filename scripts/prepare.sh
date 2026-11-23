@@ -208,6 +208,7 @@ echo "::notice::JIDU6611 DTS, ART calibration cells, BDF, AHB/PCI drivers and MH
 # Fail early if make defconfig silently drops a package required by this router.
 REQUIRED_PACKAGES="
 adguardhome tailscale untangled-full
+etherwake luci-app-wol
 kmod-fs-btrfs btrfs-progs
 sqm-scripts luci-app-sqm tc-full ip-full
 kmod-sched kmod-sched-core kmod-sched-cake kmod-sched-ctinfo
