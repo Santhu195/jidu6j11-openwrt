@@ -1,0 +1,25 @@
+From 3333333333333333333333333333333333333333 Mon Sep 17 00:00:00 2001
+From: Custom OpenWrt patch <noreply@example.com>
+Date: Tue, 24 Nov 2026 00:00:00 +0000
+Subject: [PATCH] mac80211: bump package release for local ath11k patches
+
+The JIDU6J11 build carries additional ath11k and mac80211 patches.
+Increment PKG_RELEASE so the resulting wireless packages have a new
+package version instead of reusing the release from the previous image.
+
+---
+ package/kernel/mac80211/Makefile | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/package/kernel/mac80211/Makefile b/package/kernel/mac80211/Makefile
+--- a/package/kernel/mac80211/Makefile
++++ b/package/kernel/mac80211/Makefile
+@@ -12,7 +12,7 @@ PKG_NAME:=mac80211
+ PKG_SOURCE_VERSION:=7.2
+ PKG_VERSION:=$(subst -,_,$(PKG_SOURCE_VERSION))
+-PKG_RELEASE:=18
++PKG_RELEASE:=19
+ PKG_LICENSE:=GPL-2.0-only
+ PKG_LICENSE_FILES:=COPYING
+--
+2.43.0
