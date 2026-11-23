@@ -67,7 +67,8 @@ adguardhome
 tailscale
 untangled-full
 
-# --- Tools ---
+# --- Tools and network diagnostics ---
+tcpdump
 htop
 nano
 curl
