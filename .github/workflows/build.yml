@@ -16,12 +16,13 @@ permissions:
 env:
   OPENWRT_REPO: https://github.com/openwrt/openwrt.git
   OPENWRT_BRANCH: main
-  PR_NUMBER: "26498" # upstream PR with the device support; set to "" once merged
-  IWINFO_PRS: "51" # open openwrt/iwinfo PRs to patch in (space-separated); set to "" once merged
+  PR_NUMBER: "26498"
+  IWINFO_PRS: "51"
+  PACKAGES_COMMIT: "074500b953d27131881f6cb2f37edbb86be985ba"
   TARGET: qualcommbe
   SUBTARGET: ipq95xx
   SKUS: "6111 6411 6611 6711 6811 6911"
-  EXPECTED_DEVICES: "6" # prepare.sh fails if .config does not enable exactly this many profiles
+  EXPECTED_DEVICES: "6"
   KEEP_RELEASES: "7"
 
 jobs:
@@ -49,10 +50,10 @@ jobs:
           for n in $IWINFO_PRS; do
             iw="$iw $(git ls-remote https://github.com/openwrt/iwinfo "refs/pull/$n/head" | cut -f1)"
           done
-          own=$(git ls-tree -r HEAD -- config patches files bdf feeds.conf.default.d scripts | sha256sum | cut -d' ' -f1)
-          hash=$(echo "$up $pr $iw $own" | sha256sum | cut -c1-16)
+          own=$(git ls-tree -r HEAD -- config patches files bdf feeds.conf.default.d scripts .github | sha256sum | cut -d' ' -f1)
+          hash=$(echo "$up $pr $iw $PACKAGES_COMMIT $own" | sha256sum | cut -c1-16)
 
-          last=$(gh release view --json body -q .body 2>/dev/null | grep -oP 'Build-Hash: \K\w+' || true)
+          last=$(gh release view --json body -q .body 2>/dev/null | grep -oP 'Build-Hash: Kw+' || true)
           echo "current=$hash last=$last"
 
           if [ "$hash" != "$last" ] || [ "$FORCE" = "true" ]; then
@@ -118,62 +119,26 @@ jobs:
       if: always()
       run: |
         cd openwrt
-
         echo ""
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "  🖥️  Runner Info"
+        echo "  Runner Info"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo "  OS      : $(lsb_release -ds)"
         echo "  CPU     : $(nproc) cores"
         echo "  RAM     : $(free -h | awk '/^Mem/{print $2}') total / $(free -h | awk '/^Mem/{print $7}') available"
         echo "  Disk    : $(df -h . | awk 'NR==2{print $4}') free of $(df -h . | awk 'NR==2{print $2}')"
-
         echo ""
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "  🎯 Build Target"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "  Target  : $(grep 'CONFIG_TARGET_BOARD' .config | cut -d= -f2 | tr -d '\"')"
-        echo "  Subtarget: $(grep 'CONFIG_TARGET_SUBTARGET' .config | cut -d= -f2 | tr -d '\"')"
-        echo "  Devices :"
-        grep -E '^CONFIG_TARGET_DEVICE_.*=y' .config | sed -E 's/.*_DEVICE_(.*)=y/    - \1/'
-
+        echo "  Build target: $(grep 'CONFIG_TARGET_BOARD' .config | cut -d= -f2 | tr -d '\"') / $(grep 'CONFIG_TARGET_SUBTARGET' .config | cut -d= -f2 | tr -d '\"')"
+        grep -E '^CONFIG_TARGET_DEVICE_.*=y' .config | sed -E 's/.*_DEVICE_(.*)=y/  - \1/'
         echo ""
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "  📜 Git Commits (last 5)"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         git log --oneline -5
-
         echo ""
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "  📦 Build Artifacts"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         ls -1 bin/targets/$TARGET/$SUBTARGET/ 2>/dev/null || true
-
+        ls -lh bin/targets/$TARGET/$SUBTARGET/*sysupgrade* bin/targets/$TARGET/$SUBTARGET/*initramfs* 2>/dev/null | awk '{print $5, $9}' || true
         echo ""
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "  📏 Image Sizes"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        ls -lh bin/targets/$TARGET/$SUBTARGET/*sysupgrade* bin/targets/$TARGET/$SUBTARGET/*initramfs* 2>/dev/null | awk '{print "  " $5 "  " $9}' || true
-
-        echo ""
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "  📦 Selected Packages Count"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "  Total   : $(grep '^CONFIG_PACKAGE_.*=y' .config | wc -l) packages"
-
-        echo ""
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "  📊 ccache Stats"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "Selected packages: $(grep '^CONFIG_PACKAGE_.*=y' .config | wc -l)"
         staging_dir/host/bin/ccache -vv --show-stats || true
-
-        echo ""
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "  🌐 Feeds"
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         cat feeds.conf
-
-        echo ""
 
     - name: Collect artifacts
       run: |
@@ -191,13 +156,11 @@ jobs:
       run: |
         bash scripts/gen-release-notes.sh out > release-notes.md
         (cd out && sha256sum * > sha256sums)
-
         tag="snapshot-$(date -u +%Y%m%d)"
         gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true
         gh release create "$tag" out/* \
           --title "Snapshot $(date -u +%Y-%m-%d)" \
           --notes-file release-notes.md
-
         gh release list --limit 100 --json tagName -q '.[].tagName' \
           | grep '^snapshot-' | sort -r | tail -n +"$((KEEP_RELEASES + 1))" \
           | xargs -r -I{} gh release delete {} --yes --cleanup-tag
