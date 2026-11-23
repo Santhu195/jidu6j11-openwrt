@@ -53,7 +53,7 @@ jobs:
           own=$(git ls-tree -r HEAD -- config patches files bdf feeds.conf.default.d scripts .github | sha256sum | cut -d' ' -f1)
           hash=$(echo "$up $pr $iw $PACKAGES_COMMIT $own" | sha256sum | cut -c1-16)
 
-          last=$(gh release view --json body -q .body 2>/dev/null | grep -oP 'Build-Hash: Kw+' || true)
+          last=$(gh release view --json body -q .body 2>/dev/null | sed -n 's/.*Build-Hash: //p' | head -n1 || true)
           echo "current=$hash last=$last"
 
           if [ "$hash" != "$last" ] || [ "$FORCE" = "true" ]; then
