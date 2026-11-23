@@ -151,6 +151,60 @@ if [ -n "${EXPECTED_DEVICES:-}" ]; then
   fi
 fi
 
+echo "::endgroup::"
+
+# Validate the JIDU6611-specific calibration and wireless driver chain before compiling.
+IMAGE_MK="target/linux/${TARGET}/image/${SUBTARGET}.mk"
+JIDU_DTS="target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6611.dts"
+JIDU_COMMON_DTS="target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11.dtsi"
+BDF_NAME="board-jiorouter_ax6000-jidu6j11.ipq9574"
+
+for path in "$IMAGE_MK" "$JIDU_DTS" "$JIDU_COMMON_DTS" \
+            "package/kernel/mac80211/ath.mk" \
+            "package/kernel/linux/modules/netsupport.mk" \
+            "package/firmware/ipq-wifi/Makefile"; do
+  if [ ! -s "$path" ]; then
+    echo "::error::Required JIDU build source is missing: $path"
+    exit 1
+  fi
+done
+
+for pkg in kmod-ath11k-ahb kmod-ath11k-pci ath11k-firmware-ipq9574 \
+           ath11k-firmware-qcn9074 ipq-wifi-jiorouter_ax6000-jidu6j11; do
+  if ! grep -Fq "$pkg" "$IMAGE_MK"; then
+    echo "::error::JIDU image profile is missing required wireless component: $pkg"
+    exit 1
+  fi
+done
+
+if [ "$(grep -Fc 'qcom,ath11k-calibration-variant = "JIDU6611";' "$JIDU_DTS")" -ne 2 ] ||
+   ! grep -Fq 'compatible = "jiorouter,ax6000-jidu6611"' "$JIDU_DTS"; then
+  echo "::error::JIDU6611 DTS compatibility or both radio calibration variants are missing"
+  exit 1
+fi
+
+for item in 'label = "0:ART";' 'label = "0:BDF";' 'cal_ahb:' 'cal_pci:'; do
+  if ! grep -Fq "$item" "$JIDU_COMMON_DTS"; then
+    echo "::error::JIDU common DTS is missing required calibration/partition item: $item"
+    exit 1
+  fi
+done
+
+if [ ! -s "$ROOT/bdf/$BDF_NAME" ] ||
+   [ ! -s "package/firmware/ipq-wifi/src/$BDF_NAME" ] ||
+   ! grep -Fq 'jiorouter_ax6000-jidu6j11' package/firmware/ipq-wifi/Makefile; then
+  echo "::error::JIDU IPQ9574 board data is missing or not registered in ipq-wifi"
+  exit 1
+fi
+
+if ! grep -Fq 'DEPENDS+= @PCI_SUPPORT +kmod-qrtr-mhi +kmod-ath11k' package/kernel/mac80211/ath.mk ||
+   ! grep -Fq 'DEPENDS:=+kmod-mhi-bus +kmod-qrtr' package/kernel/linux/modules/netsupport.mk; then
+  echo "::error::ath11k PCI / QRTR / MHI dependency chain changed; review it before building"
+  exit 1
+fi
+
+echo "::notice::JIDU6611 DTS, ART calibration cells, BDF, AHB/PCI drivers and MHI dependency chain verified"
+
 # Fail early if make defconfig silently drops a package required by this router.
 REQUIRED_PACKAGES="
 adguardhome tailscale untangled-full
