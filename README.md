@@ -50,14 +50,14 @@ GitHub also adds a "Source code" archive to every release. It only holds this re
 - **OpenWrt `main` with device support merged in.** The Jio AX6000 isn't in official snapshots yet, so each build merges [PR #26498](https://github.com/openwrt/openwrt/pull/26498) on top of the current `main`. This goes away once the PR is merged upstream.
 - **Custom Wi-Fi board data and driver patches.** Board files in `bdf/` are copied into the `ipq-wifi` package, and ath11k patches in `patches/ath11k/` are added to the mac80211 package. These are changes that can't go upstream or aren't merged yet.
 - **iwinfo [PR #51](https://github.com/openwrt/iwinfo/pull/51).** It's downloaded and applied at build time. It adds the IPQ9574 device ID.
-- **Home-network services and QoS.** The image includes AdGuard Home, Tailscale and SQM/CAKE, plus the kernel modules and utilities needed by QoSmate. QoSmate itself is deliberately not installed or enabled, so it will not compete with your existing SQM/CAKE setup. This keeps DNS filtering, remote access and traffic shaping available without forcing a second QoS manager.
+- **Home-network services and QoS.** The image includes AdGuard Home, Tailscale and SQM/CAKE, plus the kernel modules and utilities required by the current QoSmate installer. QoSmate itself is deliberately not installed or enabled, so it will not compete with your existing SQM/CAKE setup. The packages feed is pinned to keep AdGuard Home at 0.107.80 (the current feed has moved to 1.0.0); review that major-version migration separately before changing the pin. Tailscale is 1.104.6 in both the pinned and current feed.
 - **Wi-Fi enabled by default on initial setup.** A one-time `uci-defaults` script enables configured radios and interfaces, then records a marker in `/etc/config/system` so later configuration-preserving upgrades do not repeatedly re-enable radios or SSIDs you disabled.
 - **Extra packages.** USB storage and network support, Btrfs kernel and userspace tools, VPN and traffic-shaping tools, SQM/CAKE, QoSmate prerequisites, and handy command-line tools are built into the image. QoSmate itself is not installed. The current list is in [`config/extra-packages.txt`](config/extra-packages.txt). Kernel modules that aren't in the image can't be installed later, because there is no package feed for these builds yet.
 
 ## How the builds work
 
 - The workflow ([`.github/workflows/build.yml`](.github/workflows/build.yml)) runs daily at 02:00 IST (20:30 UTC) and can also be started by hand from the Actions tab. Tick "Build even if nothing changed" to force a build.
-- It first checks whether anything changed: the OpenWrt `main` commit, the device-support PR, the iwinfo PR, or files in this repo. If not, it skips the build, so you only get a new release when there is something new.
+- It checks the OpenWrt `main` commit, the device-support PR, the iwinfo PR, every active package-feed revision, and the build configuration. A change in any of those inputs triggers a new build.
 - All six SKUs are built in a single run and published together.
 - Downloads and compiler output are cached between runs to keep builds fast.
 
@@ -84,7 +84,8 @@ scripts/
 
 - **Packages:** edit `config/extra-packages.txt`. A leading `-` removes a package that would otherwise be included.
 - **Patches:** add `git format-patch` files to `patches/openwrt/` (numbered, so the order is clear), or to `patches/ath11k/` for the Wi-Fi driver. Keep them with plain LF line endings: add `*.patch -text` to `.gitattributes` so Git doesn't convert them.
-- **After a PR is merged upstream:** clear `PR_NUMBER` (device support) or `IWINFO_PRS` (iwinfo) at the top of `build.yml`, otherwise the patch may fail because the change is already there.
+- **Device-support PR:** clear `PR_NUMBER` only after [PR #26498](https://github.com/openwrt/openwrt/pull/26498) is merged into OpenWrt `main`.
+- **iwinfo PR #51:** this PR is merged into the iwinfo source repository, but OpenWrt `main` still pins an older iwinfo source commit. Keep `IWINFO_PRS=51` until the OpenWrt iwinfo package updates its `PKG_SOURCE_VERSION` to include commit `49e3d3fa4752971deefe3af9c0608fe461a32df9`; then remove the extra patch input.
 - **Local build:** run `scripts/prepare.sh` on a machine with the OpenWrt build dependencies, then `cd openwrt && make download && make -j$(nproc)`.
 
 ## Help get this merged upstream
