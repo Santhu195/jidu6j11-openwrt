@@ -96,6 +96,22 @@ done
 ./scripts/feeds install -a
 echo "::endgroup::"
 
+echo "::group::Build UnTangled 0.1.12 package"
+UNTANGLED_DIR="$ROOT/cache/untangled"
+rm -rf "$UNTANGLED_DIR"
+git clone --depth 1 --branch v0.1.12 https://github.com/bidhata/untangled.git "$UNTANGLED_DIR"
+(
+  cd "$UNTANGLED_DIR"
+  npm ci
+  npm run build
+)
+mkdir -p package/untangled
+cp -a "$UNTANGLED_DIR/openwrt/." package/untangled/
+sed -i 's/^PKG_VERSION:=0.1.0$/PKG_VERSION:=0.1.12/' package/untangled/Makefile
+mkdir -p package/untangled/files/www/untangled
+cp -a "$UNTANGLED_DIR/dist/." package/untangled/files/www/untangled/
+echo "::endgroup::"
+
 if [ -d "$ROOT/files" ]; then
   cp -r "$ROOT/files" files
 fi
