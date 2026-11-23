@@ -22,7 +22,7 @@ This alias is intentionally limited to JIDU6611.
 diff --git a/target/linux/qualcommbe/image/ipq95xx.mk b/target/linux/qualcommbe/image/ipq95xx.mk
 --- a/target/linux/qualcommbe/image/ipq95xx.mk
 +++ b/target/linux/qualcommbe/image/ipq95xx.mk
-@@ -83,6 +83,8 @@ define Device/jiorouter_ax6000-jidu6611
+@@ -83,4 +83,6 @@ define Device/jiorouter_ax6000-jidu6611
  	$(call Device/jiorouter_ax6000-jidu6j11-common)
 +	BOARD_NAME := jiorouter_ax6000-jidu6j11
 +	SUPPORTED_DEVICES := jiorouter,ax6000-jidu6j11 jiorouter,ax6000-jidu6611
@@ -32,7 +32,7 @@ diff --git a/target/linux/qualcommbe/image/ipq95xx.mk b/target/linux/qualcommbe/
 diff --git a/target/linux/qualcommbe/ipq95xx/base-files/lib/upgrade/platform.sh b/target/linux/qualcommbe/ipq95xx/base-files/lib/upgrade/platform.sh
 --- a/target/linux/qualcommbe/ipq95xx/base-files/lib/upgrade/platform.sh
 +++ b/target/linux/qualcommbe/ipq95xx/base-files/lib/upgrade/platform.sh
-@@ -24,6 +24,11 @@ platform_check_image() {
+@@ -25,4 +25,8 @@ platform_check_image() {
  	case "$(board_name)" in
 +	jiorouter,ax6000-jidu6611)
 +		nand_do_platform_check "jiorouter,ax6000-jidu6j11" "$1"
