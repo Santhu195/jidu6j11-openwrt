@@ -1,0 +1,39 @@
+From 4444444444444444444444444444444444444444 Mon Sep 17 00:00:00 2001
+From: Custom OpenWrt build <noreply@example.com>
+Date: Tue, 24 Nov 2026 00:00:00 +0000
+Subject: [PATCH] iwinfo: install CLI with ucode wifi scripts enabled
+
+The default OpenWrt configuration enables WIFI_SCRIPTS_UCODE. In that
+configuration the stock iwinfo package deliberately skips installing
+the command-line binary and omits its libiwinfo dependency.
+
+This build explicitly requests the iwinfo diagnostic utility. Keep the
+ucode Wi-Fi scripts as configured, but install the CLI and its runtime
+library so /usr/bin/iwinfo is present in the image.
+
+---
+ package/network/utils/iwinfo/Makefile | 9 ++++-----
+ 1 file changed, 4 insertions(+), 5 deletions(-)
+
+diff --git a/package/network/utils/iwinfo/Makefile b/package/network/utils/iwinfo/Makefile
+--- a/package/network/utils/iwinfo/Makefile
++++ b/package/network/utils/iwinfo/Makefile
+@@
+-  DEPENDS:=+@!WIFI_SCRIPTS_UCODE:libiwinfo
++  DEPENDS:=+libiwinfo
+@@
+-ifdef CONFIG_WIFI_SCRIPTS_UCODE
+-  define Package/iwinfo/install
+-	:
+-  endef
+-else
+-  define Package/iwinfo/install
++define Package/iwinfo/install
+ 	$(INSTALL_DIR) $(1)/usr/bin
+ 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/iwinfo $(1)/usr/bin/iwinfo
+-  endef
+-endif
++endef
+
+--
+2.43.0
