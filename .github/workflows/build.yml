@@ -147,11 +147,35 @@ jobs:
 
     - name: Collect artifacts
       run: |
+        set -euo pipefail
         d=openwrt/bin/targets/$TARGET/$SUBTARGET
         mkdir out
+
+        # Require one sysupgrade and one initramfs image for every SKU.
+        for sku in $SKUS; do
+          sysupgrade=( "$d"/*-jidu"$sku"-*sysupgrade* )
+          initramfs=( "$d"/*-jidu"$sku"-*initramfs* )
+          if [ "${#sysupgrade[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one JIDU${sku} sysupgrade image; found ${#sysupgrade[@]}"
+            exit 1
+          fi
+          if [ "${#initramfs[@]}" -ne 1 ]; then
+            echo "::error::Expected exactly one JIDU${sku} initramfs image; found ${#initramfs[@]}"
+            exit 1
+          fi
+          cp "${sysupgrade[0]}" "${initramfs[0]}" out/
+        done
+
+        # Keep build configuration and package manifests for post-build auditing.
         find "$d" -maxdepth 1 -type f \
-          \( -name '*sysupgrade*' -o -name '*initramfs*' \) \
+          \\( -name '*.manifest' -o -name 'config.buildinfo' -o -name 'feeds.buildinfo' -o -name 'version.buildinfo' -o -name 'profiles.json' \\) \
           -exec cp {} out/ \;
+
+        # Check the legacy tar directory expected by the currently installed JIDU6J11 image.
+        jidu6611=( "$d"/*-jidu6611-*sysupgrade* )
+        tar -tf "${jidu6611[0]}" | grep -qx "sysupgrade-jiorouter_ax6000-jidu6j11/CONTROL"
+        tar -xOf "${jidu6611[0]}" sysupgrade-jiorouter_ax6000-jidu6j11/CONTROL | grep -qx "BOARD=jiorouter_ax6000-jidu6j11"
+
         ls -lh out
 
     - name: Publish release
@@ -161,10 +185,9 @@ jobs:
       run: |
         bash scripts/gen-release-notes.sh out > release-notes.md
         (cd out && sha256sum * > sha256sums)
-        tag="snapshot-$(date -u +%Y%m%d)"
-        gh release delete "$tag" --yes --cleanup-tag 2>/dev/null || true
+        tag="snapshot-$(date -u +%Y%m%d)-${GITHUB_RUN_ID}"
         gh release create "$tag" out/* \
-          --title "Snapshot $(date -u +%Y-%m-%d)" \
+          --title "Snapshot $(date -u +%Y-%m-%d) (run ${GITHUB_RUN_NUMBER})" \
           --notes-file release-notes.md
         gh release list --limit 100 --json tagName -q '.[].tagName' \
           | grep '^snapshot-' | sort -r | tail -n +"$((KEEP_RELEASES + 1))" \
