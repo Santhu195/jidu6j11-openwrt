@@ -152,6 +152,7 @@ jobs:
         mkdir out
 
         # Require one sysupgrade and one initramfs image for every SKU.
+        shopt -s nullglob
         for sku in $SKUS; do
           sysupgrade=( "$d"/*-jidu"$sku"-*sysupgrade* )
           initramfs=( "$d"/*-jidu"$sku"-*initramfs* )
