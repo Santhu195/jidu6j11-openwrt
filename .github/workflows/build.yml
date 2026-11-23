@@ -212,6 +212,23 @@ jobs:
           \( -name '*.manifest' -o -name 'config.buildinfo' -o -name 'feeds.buildinfo' -o -name 'version.buildinfo' -o -name 'profiles.json' \) \
           -exec cp {} out/ \;
 
+        # Verify every requested extra package actually reached the image manifest.
+        manifest=( "$d"/*.manifest )
+        if [ "${#manifest[@]}" -ne 1 ] || [ ! -s "${manifest[0]}" ]; then
+          echo "::error::Expected exactly one non-empty target package manifest"
+          exit 1
+        fi
+        while read -r pkg _; do
+          case "$pkg" in
+            ""|\#*) continue ;;
+            -*) continue ;;
+          esac
+          if ! grep -Eq "^${pkg} - " "${manifest[0]}"; then
+            echo "::error::Extra package missing from image manifest: $pkg"
+            exit 1
+          fi
+        done < config/extra-packages.txt
+
         # Check the legacy tar directory expected by the currently installed JIDU6J11 image.
         jidu6611=( "$d"/*-jidu6611-*sysupgrade* )
         tar -tf "${jidu6611[0]}" | grep -qx "sysupgrade-jiorouter_ax6000-jidu6j11/CONTROL"
