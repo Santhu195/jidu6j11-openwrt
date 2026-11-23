@@ -106,7 +106,8 @@ git clone --depth 1 --branch v0.1.12 https://github.com/bidhata/untangled.git "$
   npm run build
 )
 mkdir -p package/untangled
-cp -a "$UNTANGLED_DIR/openwrt/." package/untangled/
+cp -a "$UNTANGLED_DIR/openwrt/Makefile" package/untangled/
+cp -a "$UNTANGLED_DIR/openwrt/files" "$UNTANGLED_DIR/openwrt/files-mesh" package/untangled/
 sed -i 's/^PKG_VERSION:=0.1.0$/PKG_VERSION:=0.1.12/' package/untangled/Makefile
 mkdir -p package/untangled/files/www/untangled
 cp -a "$UNTANGLED_DIR/dist/." package/untangled/files/www/untangled/
