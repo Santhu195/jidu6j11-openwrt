@@ -3,7 +3,7 @@
 # Apply the default only once. Keep this marker in /etc/config/system so a
 # later sysupgrade that preserves configuration does not re-enable radios or
 # SSIDs the user intentionally disabled.
-[ "$(uci -q get system.@system[0].jidu_wifi_defaults_done)" = "1" ] && exit 0
+[ "$(uci -q get 'system.@system[0].jidu_wifi_defaults_done')" = "1" ] && exit 0
 
 # Enable the radios and interfaces on the initial installation.
 for radio in $(uci -q show wireless | sed -n 's/^wireless\.\([^.=]*\)=wifi-device$/\1/p'); do
@@ -15,7 +15,7 @@ for iface in $(uci -q show wireless | sed -n 's/^wireless\.\([^.=]*\)=wifi-iface
 done
 
 uci commit wireless || exit 1
-uci -q set system.@system[0].jidu_wifi_defaults_done='1' || exit 1
+uci -q set 'system.@system[0].jidu_wifi_defaults_done=1' || exit 1
 uci -q commit system || exit 1
 
 exit 0
