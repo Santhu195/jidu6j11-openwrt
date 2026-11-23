@@ -33,7 +33,7 @@ These differences affect Wi-Fi range and thermals, so keep them in mind when com
 Builds are published on the [Releases page](https://github.com/Santhu195/jidu6j11-openwrt/releases) as `snapshot-YYYYMMDD-RUNID`. The latest 7 releases are kept, and older ones are deleted automatically. Each release contains:
 
 - **Sysupgrade images**, one per SKU. Pick the one that matches your device.
-- **`initramfs-uImage.itb`**, an image that boots from RAM. Use it for a first install or for recovery.
+- **SKU-specific `initramfs-uImage.itb` images**, which boot the matching board from RAM. The filename includes the SKU; use only the image for your exact variant.
 - **`sha256sums`**, for checking that a download is intact.
 
 GitHub also adds a "Source code" archive to every release. It only holds this repo's files (configs, scripts, patches), not OpenWrt itself.
@@ -51,7 +51,7 @@ GitHub also adds a "Source code" archive to every release. It only holds this re
 - **Custom Wi-Fi board data and driver patches.** Board files in `bdf/` are copied into the `ipq-wifi` package, and ath11k patches in `patches/ath11k/` are added to the mac80211 package. These are changes that can't go upstream or aren't merged yet.
 - **iwinfo [PR #51](https://github.com/openwrt/iwinfo/pull/51).** It's downloaded and applied at build time. It adds the IPQ9574 device ID.
 - **Regulatory compliance.** The build does not force an FCC/Panama regulatory domain. Set the correct country (IN in India) and let the firmware and regulatory database enforce channel, DFS and power restrictions.
-- **Wi-Fi enabled by default.** A `uci-defaults` script automatically enables all configured Wi-Fi radios and interfaces on first boot.
+- **Wi-Fi enabled by default on initial setup.** A one-time `uci-defaults` script enables configured radios and interfaces, then records a marker in `/etc/config/system` so later configuration-preserving upgrades do not repeatedly re-enable radios or SSIDs you disabled.
 - **Extra packages.** USB storage and network support, Btrfs kernel and userspace tools, VPN and traffic-shaping tools, SQM/CAKE, QoSmate prerequisites, and handy command-line tools are built into the image. QoSmate itself is not installed. The current list is in [`config/extra-packages.txt`](config/extra-packages.txt). Kernel modules that aren't in the image can't be installed later, because there is no package feed for these builds yet.
 
 ## How the builds work
