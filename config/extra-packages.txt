@@ -42,6 +42,7 @@ tc
 # --- Core services ---
 adguardhome
 tailscale
+untangled-full
 
 # --- Tools ---
 htop
