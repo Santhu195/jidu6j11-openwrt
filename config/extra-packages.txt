@@ -54,7 +54,7 @@ tc-full
 
 # --- QoSmate runtime prerequisites (QoSmate itself is NOT installed/enabled) ---
 luci-lib-jsonc
-lua5.4
+lua
 jq
 coreutils-sleep
 
