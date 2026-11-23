@@ -33,6 +33,10 @@ kmod-hid
 kmod-nf-nat6
 kmod-ip6tables
 
+# --- Wake-on-LAN (command and LuCI interface) ---
+etherwake
+luci-app-wol
+
 # --- Network kmods ---
 kmod-wireguard
 kmod-tun
