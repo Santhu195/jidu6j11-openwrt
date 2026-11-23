@@ -1,19 +1,23 @@
-From 2d65cdbf32b9a1ad7f7b0c312c2d8e9a7a661111 Mon Sep 17 00:00:00 2001
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
 From: Santhu195 <santhu195@users.noreply.github.com>
 Date: Mon, 23 Nov 2026 18:30:00 +0530
 Subject: [PATCH] qualcommbe: retain legacy JIDU6J11 sysupgrade identifier
 
-The running generic JIDU6J11 firmware identifies the board as
-jiorouter,ax6000-jidu6j11. Keep that archive directory and identifier
-for the JIDU6611 image so an upgrade from that firmware can be validated.
-The new device tree remains SKU-specific and still selects JIDU6611
+The currently installed generic JIDU6J11 firmware identifies the board
+as jiorouter,ax6000-jidu6j11. Use that identifier for the sysupgrade
+archive and metadata while keeping the JIDU6611-specific device tree and
 calibration data.
 
-This alias is intentionally only applied to the JIDU6611 profile.
+The new firmware must also use the legacy archive lookup on later
+sysupgrades, because nand_do_upgrade expects a single sysupgrade
+directory in the tar archive.
+
+This alias is intentionally limited to JIDU6611.
 
 ---
- target/linux/qualcommbe/image/ipq95xx.mk | 2 ++
- 1 file changed, 2 insertions(+)
+ target/linux/qualcommbe/image/ipq95xx.mk                    | 2 ++
+ target/linux/qualcommbe/ipq95xx/base-files/lib/upgrade/platform.sh | 5 +++++
+ 2 files changed, 7 insertions(+)
 
 diff --git a/target/linux/qualcommbe/image/ipq95xx.mk b/target/linux/qualcommbe/image/ipq95xx.mk
 --- a/target/linux/qualcommbe/image/ipq95xx.mk
@@ -25,5 +29,17 @@ diff --git a/target/linux/qualcommbe/image/ipq95xx.mk b/target/linux/qualcommbe/
  	DEVICE_VARIANT := JIDU6611
  	DEVICE_DTS := ipq9554-jiorouter-ax6000-jidu6611
  endef
+diff --git a/target/linux/qualcommbe/ipq95xx/base-files/lib/upgrade/platform.sh b/target/linux/qualcommbe/ipq95xx/base-files/lib/upgrade/platform.sh
+--- a/target/linux/qualcommbe/ipq95xx/base-files/lib/upgrade/platform.sh
++++ b/target/linux/qualcommbe/ipq95xx/base-files/lib/upgrade/platform.sh
+@@ -24,6 +24,11 @@ platform_check_image() {
+ 	case "$(board_name)" in
++	jiorouter,ax6000-jidu6611)
++		nand_do_platform_check "jiorouter,ax6000-jidu6j11" "$1"
++		return $?
++		;;
+ 	jiorouter,ax6000-jidu6111|\
+ 	jiorouter,ax6000-jidu6411|\
+ 	jiorouter,ax6000-jidu6611|\
 --
 2.43.0
