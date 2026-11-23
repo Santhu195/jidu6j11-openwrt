@@ -48,6 +48,10 @@ if [ -n "$PR_NUMBER" ]; then
   echo "**Device support PR:** #$PR_NUMBER at \`${PR_SHA:0:12}\`"
 fi
 
+if [ -n "$PACKAGES_COMMIT" ]; then
+  echo "**packages feed:** \`${PACKAGES_COMMIT:0:12}\`"
+fi
+
 if [ -n "${IWINFO_PRS:-}" ]; then
   echo "**iwinfo PRs applied:** $(for n in $IWINFO_PRS; do printf '#%s ' "$n"; done)"
 fi
