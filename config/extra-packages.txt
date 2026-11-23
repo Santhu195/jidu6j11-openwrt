@@ -27,8 +27,21 @@ kmod-usb-net-asix-ax88179
 
 # --- Network kmods ---
 kmod-wireguard
+kmod-tun
 kmod-zram
 kmod-nat46
+
+# --- SQM / CAKE (preserve current QoS capability) ---
+sqm-scripts
+luci-app-sqm
+kmod-sched-core
+kmod-sched-cake
+kmod-ifb
+tc
+
+# --- Core services ---
+adguardhome
+tailscale
 
 # --- Tools ---
 htop
@@ -38,4 +51,3 @@ iperf3
 ethtool
 ip-full
 zram-swap
-
