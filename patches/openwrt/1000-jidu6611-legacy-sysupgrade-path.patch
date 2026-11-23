@@ -1,0 +1,30 @@
+From 2d65cdbf32b9a1ad7f7b0c312c2d8e9a7a661111 Mon Sep 17 00:00:00 2001
+From: Santhu195 <santhu195@users.noreply.github.com>
+Date: Mon, 23 Nov 2026 18:30:00 +0530
+Subject: [PATCH] qualcommbe: retain legacy JIDU6J11 sysupgrade identifier
+
+The running generic JIDU6J11 firmware identifies the board as
+jiorouter,ax6000-jidu6j11. Keep that archive directory and identifier
+for the JIDU6611 image so an upgrade from that firmware can be validated.
+The new device tree remains SKU-specific and still selects JIDU6611
+calibration data.
+
+This alias is intentionally only applied to the JIDU6611 profile.
+
+---
+ target/linux/qualcommbe/image/ipq95xx.mk | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/target/linux/qualcommbe/image/ipq95xx.mk b/target/linux/qualcommbe/image/ipq95xx.mk
+index 1111111111..2222222222 100644
+--- a/target/linux/qualcommbe/image/ipq95xx.mk
++++ b/target/linux/qualcommbe/image/ipq95xx.mk
+@@ -83,6 +83,8 @@ define Device/jiorouter_ax6000-jidu6611
+ 	$(call Device/jiorouter_ax6000-jidu6j11-common)
++	BOARD_NAME := jiorouter_ax6000-jidu6j11
++	SUPPORTED_DEVICES := jiorouter,ax6000-jidu6j11 jiorouter,ax6000-jidu6611
+ 	DEVICE_VARIANT := JIDU6611
+ 	DEVICE_DTS := ipq9554-jiorouter-ax6000-jidu6611
+ endef
+--
+2.43.0
