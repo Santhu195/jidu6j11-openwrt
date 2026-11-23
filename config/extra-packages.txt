@@ -11,6 +11,7 @@ dosfstools
 usbutils
 
 # --- Filesystems and charset support for USB drives ---
+kmod-fs-btrfs
 kmod-fs-ext4
 kmod-fs-vfat
 kmod-fs-exfat
@@ -34,10 +35,21 @@ kmod-nat46
 # --- SQM / CAKE (preserve current QoS capability) ---
 sqm-scripts
 luci-app-sqm
+kmod-sched
 kmod-sched-core
 kmod-sched-cake
+kmod-sched-ctinfo
+kmod-sched-red
+kmod-netem
+kmod-veth
 kmod-ifb
-tc
+tc-full
+
+# --- QoSmate runtime prerequisites (QoSmate itself is NOT installed/enabled) ---
+luci-lib-jsonc
+lua
+jq
+coreutils-sleep
 
 # --- Core services ---
 adguardhome
