@@ -14,7 +14,7 @@ package version instead of reusing the release from the previous image.
 diff --git a/package/kernel/mac80211/Makefile b/package/kernel/mac80211/Makefile
 --- a/package/kernel/mac80211/Makefile
 +++ b/package/kernel/mac80211/Makefile
-@@ -12,7 +12,7 @@ PKG_NAME:=mac80211
+@@ -12,5 +12,5 @@ PKG_NAME:=mac80211
  PKG_SOURCE_VERSION:=7.2
  PKG_VERSION:=$(subst -,_,$(PKG_SOURCE_VERSION))
 -PKG_RELEASE:=18
