@@ -59,6 +59,11 @@ echo "::endgroup::"
 echo "::group::Copy ath11k patches"
 mkdir -p package/kernel/mac80211/patches/ath11k
 for p in "$ROOT"/patches/ath11k/*.patch; do
+  dest="package/kernel/mac80211/patches/ath11k/$(basename "$p")"
+  if [ -e "$dest" ]; then
+    echo "::error::Custom ath11k patch collides with upstream file: $dest"
+    exit 1
+  fi
   cp -v "$p" package/kernel/mac80211/patches/ath11k/
 done
 echo "::endgroup::"
@@ -145,4 +150,30 @@ if [ -n "${EXPECTED_DEVICES:-}" ]; then
     exit 1
   fi
 fi
+
+# Fail early if make defconfig silently drops a package required by this router.
+REQUIRED_PACKAGES="
+adguardhome tailscale untangled-full
+kmod-fs-btrfs btrfs-progs
+sqm-scripts luci-app-sqm tc-full ip-full
+kmod-sched kmod-sched-core kmod-sched-cake kmod-sched-ctinfo
+kmod-sched-red kmod-netem kmod-veth kmod-ifb
+luci-lib-jsonc lua jq coreutils-sleep
+kmod-wireguard kmod-tun
+kmod-hwmon-pwmfan kmod-hid kmod-nf-nat6 kmod-ip6tables
+"
+for pkg in $REQUIRED_PACKAGES; do
+  if ! grep -qx "CONFIG_PACKAGE_${pkg}=y" .config; then
+    echo "::error::Required package was not selected after make defconfig: $pkg"
+    exit 1
+  fi
+done
+
+for sku in 6111 6411 6611 6711 6811 6911; do
+  profile="CONFIG_TARGET_DEVICE_${TARGET}_${SUBTARGET}_DEVICE_jiorouter_ax6000-jidu${sku}=y"
+  if ! grep -qx "$profile" .config; then
+    echo "::error::JIDU SKU profile was not selected: $sku"
+    exit 1
+  fi
+done
 echo "::endgroup::"
