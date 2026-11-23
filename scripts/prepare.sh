@@ -224,6 +224,18 @@ for pkg in $REQUIRED_PACKAGES; do
   fi
 done
 
+# Every explicitly requested extra package must survive make defconfig.
+while read -r pkg _; do
+  case "$pkg" in
+    ""|\#*) continue ;;
+    -*) continue ;;
+  esac
+  if ! grep -qx "CONFIG_PACKAGE_${pkg}=y" .config; then
+    echo "::error::Extra package was not selected after make defconfig: $pkg"
+    exit 1
+  fi
+done < "$ROOT/config/extra-packages.txt"
+
 for sku in 6111 6411 6611 6711 6811 6911; do
   profile="CONFIG_TARGET_DEVICE_${TARGET}_${SUBTARGET}_DEVICE_jiorouter_ax6000-jidu${sku}=y"
   if ! grep -qx "$profile" .config; then
