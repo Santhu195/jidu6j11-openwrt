@@ -42,7 +42,10 @@ echo "::endgroup::"
 echo "::group::Apply patches/openwrt"
 for p in "$ROOT"/patches/openwrt/*.patch; do
   echo "Applying $p"
-  git am --3way "$p"
+  git apply --check "$p"
+  git apply "$p"
+  git add -A
+  git -c user.name="ci" -c user.email="ci@localhost" commit -m "Apply $(basename "$p" .patch)"
 done
 echo "::endgroup::"
 
