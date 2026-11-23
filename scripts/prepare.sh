@@ -215,7 +215,7 @@ kmod-sched kmod-sched-core kmod-sched-cake kmod-sched-ctinfo
 kmod-sched-red kmod-netem kmod-veth kmod-ifb
 luci-lib-jsonc lua jq coreutils-sleep
 kmod-wireguard kmod-tun
-kmod-hwmon-pwmfan kmod-hid kmod-nf-nat6 kmod-ip6tables
+kmod-hwmon-pwmfan kmod-hid kmod-nf-nat6 kmod-ip6tables tcpdump
 "
 for pkg in $REQUIRED_PACKAGES; do
   if ! grep -qx "CONFIG_PACKAGE_${pkg}=y" .config; then
