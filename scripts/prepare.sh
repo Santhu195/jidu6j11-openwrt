@@ -149,12 +149,23 @@ if [ -f "$ROOT/config/extra-packages.txt" ]; then
   ' "$ROOT/config/extra-packages.txt" >> .config
 fi
 
+# OpenWrt's CCACHE option depends on DEVEL. Without CONFIG_DEVEL, make defconfig
+# silently removes CONFIG_CCACHE and the build runs without compiler caching.
 cat >> .config <<'EOF'
+CONFIG_DEVEL=y
 CONFIG_CCACHE=y
 CONFIG_VERSION_DIST="OpenWrt (unofficial)"
 EOF
 
 make defconfig
+
+# Fail before source compilation if Kconfig drops either required cache option.
+for symbol in CONFIG_DEVEL CONFIG_CCACHE; do
+  if ! grep -qx "${symbol}=y" .config; then
+    echo "::error::${symbol} was not retained by make defconfig; compiler caching would be disabled"
+    exit 1
+  fi
+done
 
 if [ -n "${EXPECTED_DEVICES:-}" ]; then
   n=$(grep -cE "^CONFIG_TARGET_DEVICE_${TARGET}_${SUBTARGET}_DEVICE_.*=y" .config || true)
