@@ -218,6 +218,57 @@ fi
 
 echo "::notice::JIDU6611 DTS, ART calibration cells, BDF, AHB/PCI drivers and MHI dependency chain verified"
 
+# Detect the iwinfo/wifi-scripts ownership collision before the expensive firmware build.
+# With WIFI_SCRIPTS_UCODE=y, wifi-scripts provides /usr/bin/iwinfo as a ucode
+# command. The legacy iwinfo package must therefore keep its upstream no-op
+# install branch instead of also installing a binary at the same path.
+if grep -qx 'CONFIG_WIFI_SCRIPTS_UCODE=y' .config &&
+   grep -qx 'CONFIG_PACKAGE_iwinfo=y' .config; then
+  python3 - "package/network/utils/iwinfo/Makefile" \
+            "package/network/config/wifi-scripts/Makefile" \
+            "package/network/config/wifi-scripts/files-ucode/usr/bin/iwinfo" <<'PY'
+import os
+import pathlib
+import re
+import sys
+
+iwinfo_makefile = pathlib.Path(sys.argv[1])
+wifi_scripts_makefile = pathlib.Path(sys.argv[2])
+ucode_command = pathlib.Path(sys.argv[3])
+
+iwinfo = iwinfo_makefile.read_text()
+wifi_scripts = wifi_scripts_makefile.read_text()
+
+match = re.search(
+    r"(?ms)^ifdef CONFIG_WIFI_SCRIPTS_UCODE\\s*\\n(.*?)^else\\s*\\n(.*?)^endif\\s*$",
+    iwinfo,
+)
+if not match:
+    raise SystemExit("::error::iwinfo Makefile lost the upstream UCODE/non-UCODE install split")
+
+ucode_branch, legacy_branch = match.groups()
+if not re.search(
+    r"(?ms)^\\s*define Package/iwinfo/install\\s*\\n\\s*:\\s*\\n\\s*endef\\s*$",
+    ucode_branch,
+):
+    raise SystemExit("::error::iwinfo UCODE install branch must remain a no-op; duplicate /usr/bin/iwinfo risk")
+
+if "$(INSTALL_BIN) $(PKG_BUILD_DIR)/iwinfo $(1)/usr/bin/iwinfo" not in legacy_branch:
+    raise SystemExit("::error::iwinfo legacy CLI install branch is missing or unexpectedly changed")
+
+if not ucode_command.is_file() or not os.access(ucode_command, os.X_OK):
+    raise SystemExit("::error::wifi-scripts UCODE /usr/bin/iwinfo command is missing or not executable")
+
+if not re.search(
+    r"(?ms)ifeq \\(\\$\\(CONFIG_WIFI_SCRIPTS_UCODE\\),y\\).*?\\$\\(CP\\) ./files-ucode/\\* \\(1\\)/",
+    wifi_scripts,
+):
+    raise SystemExit("::error::wifi-scripts no longer installs its UCODE command tree when UCODE mode is enabled")
+
+print("::notice::iwinfo package ownership verified: UCODE command retained; duplicate binary install blocked")
+PY
+fi
+
 # Fail early if make defconfig silently drops a package required by this router.
 REQUIRED_PACKAGES="
 adguardhome tailscale untangled-full
