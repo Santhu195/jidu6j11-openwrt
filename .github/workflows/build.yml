@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - integrate/custom-services-q6-edma-airtime
+      - integrate/latest-main-five-patches
   workflow_dispatch:
     inputs:
       force:
@@ -34,6 +35,7 @@ jobs:
     outputs:
       build: ${{ steps.check.outputs.build }}
       hash: ${{ steps.check.outputs.hash }}
+      openwrt_sha: ${{ steps.check.outputs.openwrt_sha }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -45,6 +47,10 @@ jobs:
           FORCE: ${{ inputs.force }}
         run: |
           up=$(git ls-remote "$OPENWRT_REPO" "refs/heads/$OPENWRT_BRANCH" | cut -f1)
+          if [ -z "$up" ]; then
+            echo "::error::Could not resolve OpenWrt branch $OPENWRT_BRANCH"
+            exit 1
+          fi
           pr=""
           if [ -n "$PR_NUMBER" ]; then
             pr=$(git ls-remote "$OPENWRT_REPO" "refs/pull/$PR_NUMBER/head" | cut -f1)
@@ -105,6 +111,7 @@ jobs:
             echo "build=false" >> "$GITHUB_OUTPUT"
           fi
           echo "hash=$hash" >> "$GITHUB_OUTPUT"
+          echo "openwrt_sha=$up" >> "$GITHUB_OUTPUT"
 
   preflight:
     needs: check
@@ -128,6 +135,8 @@ jobs:
           node-version: "22"
 
       - name: Prepare tree
+        env:
+          OPENWRT_COMMIT: ${{ needs.check.outputs.openwrt_sha }}
         run: bash scripts/prepare.sh
 
       - name: Prepare and verify ath11k patches (no full build)
@@ -181,6 +190,8 @@ jobs:
         node-version: "22"
 
     - name: Prepare tree
+      env:
+        OPENWRT_COMMIT: ${{ needs.check.outputs.openwrt_sha }}
       run: bash scripts/prepare.sh
 
     - name: Download sources
@@ -217,6 +228,9 @@ jobs:
         grep -E '^CONFIG_TARGET_DEVICE_.*=y' .config | sed -E 's/.*_DEVICE_(.*)=y/  - \1/'
         echo ""
         git log --oneline -5
+        echo ""
+        echo "  OpenWrt source revision"
+        cat ../build-info.env
         echo ""
         ls -1 bin/targets/$TARGET/$SUBTARGET/ 2>/dev/null || true
         ls -lh bin/targets/$TARGET/$SUBTARGET/*sysupgrade* bin/targets/$TARGET/$SUBTARGET/*initramfs* 2>/dev/null | awk '{print $5, $9}' || true
