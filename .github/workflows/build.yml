@@ -178,7 +178,9 @@ jobs:
         # Verify that netifd discovers the EDMA ethernet-dma child and steers
         # only RX descriptor IRQs (not TX completion or RX fill IRQs).
         bash ../scripts/verify-netifd-packet-steering.sh \
-          package/network/config/netifd/files/usr/libexec/network/packet-steering.uc
+          package/network/config/netifd/files/usr/libexec/network/packet-steering.uc \
+          package/network/config/netifd/files/etc/hotplug.d/net/20-packet-steering \
+          package/network/config/netifd/Makefile
 
         # Apply the target kernel patch series without compiling the kernel,
         # then verify the EDMA completion-ring queue-wakeup fix is present.
@@ -200,6 +202,15 @@ jobs:
         # Verify RX ring IRQ distribution and cleanup. TX completion IRQ
         # placement remains unchanged until device-level benchmarks justify it.
         bash ../scripts/verify-edma-rx-irq-affinity.sh "$edma"
+        bash ../scripts/verify-edma-napi.sh "$(dirname "$edma")"
+
+        cake_src=$(find build_dir/target-* -type f \
+          -path '*/net/sched/sch_cake.c' -print -quit)
+        if [ -z "$cake_src" ]; then
+          echo "::error::Prepared sch_cake.c source was not found"
+          exit 1
+        fi
+        bash ../scripts/verify-cake-patches.sh "$cake_src"
 
         echo "::notice::Pre-build patch validation passed; no compilation performed"
 
