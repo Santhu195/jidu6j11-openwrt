@@ -57,7 +57,7 @@ GitHub also adds a "Source code" archive to every release. It only holds this re
 ## How the builds work
 
 - The workflow ([`.github/workflows/build.yml`](.github/workflows/build.yml)) runs daily at 02:00 IST (20:30 UTC) and can also be started by hand from the Actions tab. Tick "Build even if nothing changed" to force a build.
-- It checks the OpenWrt `main` commit, the device-support PR, the iwinfo PR, every active package-feed revision, and the build configuration. A change in any of those inputs triggers a new build.
+- At the start of each run, it resolves the latest OpenWrt `main` commit and pins both preflight and the full image build to that exact SHA. It also checks the device-support PR, the iwinfo PR, every active package-feed revision, and the build configuration. A change in any of those inputs triggers a new build.
 - All six SKUs are built in a single run and published together.
 - Downloads and compiler output are cached between runs to keep builds fast.
 
