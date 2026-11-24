@@ -1,6 +1,9 @@
 name: OpenWrt Snapshot Build for Jio AX6000 (JIDU6J11)
 
 on:
+  push:
+    branches:
+      - integrate/custom-services-q6-edma-airtime
   workflow_dispatch:
     inputs:
       force:
