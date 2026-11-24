@@ -2,6 +2,7 @@
 set -euo pipefail
 
 SRC="${1:?usage: verify-ath11k-patches.sh <backports-source-dir>}"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 require_text() {
   local file="$1" needle="$2" description="$3"
@@ -45,6 +46,7 @@ require_text "$DPRX" "ieee80211_sta_register_airtime(sta, airtime_tid, tx_durati
 require_count "$DPRX" "u8 airtime_tid;" 1 "airtime_tid declaration"
 require_count "$DPRX" "ieee80211_sta_register_airtime(sta, airtime_tid, tx_duration, 0);" 1 "TX airtime accounting call"
 require_text "$DPRX" "ieee80211_sta_register_airtime(peer->sta, tid, 0," "RX airtime accounting call"
+python3 "$ROOT/scripts/verify-ath11k-source.py" "$DPRX"
 
 # Completion-budget handling and completion-driven TXQ rescheduling.
 require_text "$DP" "ath11k_dp_tx_completion_handler(ab, i, budget)" "budgeted TX completion call"

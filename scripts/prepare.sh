@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Clone OpenWrt, merge the device-support PR, apply patches, set up feeds and .config.
 # Run from anywhere; works relative to the repo root.
-# Env: OPENWRT_REPO, OPENWRT_BRANCH, PR_NUMBER, TARGET, SUBTARGET, EXPECTED_DEVICES, PACKAGES_COMMIT
+# Env: OPENWRT_REPO, OPENWRT_BRANCH, OPENWRT_COMMIT, PR_NUMBER, TARGET, SUBTARGET, EXPECTED_DEVICES, PACKAGES_COMMIT
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -9,6 +9,7 @@ cd "$ROOT"
 
 OPENWRT_REPO="${OPENWRT_REPO:-https://github.com/openwrt/openwrt.git}"
 OPENWRT_BRANCH="${OPENWRT_BRANCH:-main}"
+OPENWRT_COMMIT="${OPENWRT_COMMIT:-}"
 PR_NUMBER="${PR_NUMBER:-}"
 IWINFO_PRS="${IWINFO_PRS:-}"
 PACKAGES_COMMIT="${PACKAGES_COMMIT:-}"
@@ -19,11 +20,22 @@ git config --global user.name "ci"
 git config --global user.email "ci@localhost"
 shopt -s nullglob
 
+# Lint custom ath11k patch hunks before cloning feeds or compiling anything.
+python3 "$ROOT/scripts/verify-patch-series.py" "$ROOT/patches/ath11k"
+
 echo "::group::Clone OpenWrt"
 rm -rf openwrt
 git clone --branch "$OPENWRT_BRANCH" "$OPENWRT_REPO" openwrt
 cd openwrt
+if [ -n "$OPENWRT_COMMIT" ]; then
+  echo "Checking out requested OpenWrt commit: $OPENWRT_COMMIT"
+  git checkout --detach "$OPENWRT_COMMIT"
+fi
 UPSTREAM_SHA="$(git rev-parse HEAD)"
+if [ -n "$OPENWRT_COMMIT" ] && [ "$UPSTREAM_SHA" != "$OPENWRT_COMMIT" ]; then
+  echo "::error::OpenWrt checkout mismatch: expected $OPENWRT_COMMIT, got $UPSTREAM_SHA"
+  exit 1
+fi
 PR_SHA=""
 if [ -n "$PR_NUMBER" ]; then
   git fetch origin "pull/$PR_NUMBER/head"

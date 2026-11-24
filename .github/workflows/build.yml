@@ -34,6 +34,7 @@ jobs:
     outputs:
       build: ${{ steps.check.outputs.build }}
       hash: ${{ steps.check.outputs.hash }}
+      openwrt_sha: ${{ steps.check.outputs.openwrt_sha }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -45,6 +46,10 @@ jobs:
           FORCE: ${{ inputs.force }}
         run: |
           up=$(git ls-remote "$OPENWRT_REPO" "refs/heads/$OPENWRT_BRANCH" | cut -f1)
+          if [ -z "$up" ]; then
+            echo "::error::Could not resolve OpenWrt branch $OPENWRT_BRANCH"
+            exit 1
+          fi
           pr=""
           if [ -n "$PR_NUMBER" ]; then
             pr=$(git ls-remote "$OPENWRT_REPO" "refs/pull/$PR_NUMBER/head" | cut -f1)
@@ -105,6 +110,7 @@ jobs:
             echo "build=false" >> "$GITHUB_OUTPUT"
           fi
           echo "hash=$hash" >> "$GITHUB_OUTPUT"
+          echo "openwrt_sha=$up" >> "$GITHUB_OUTPUT"
 
   preflight:
     needs: check
@@ -127,7 +133,20 @@ jobs:
         with:
           node-version: "22"
 
+      - name: Restore preflight caches
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            cache/dl
+            cache/ccache
+          key: preflight-cache-${{ github.run_id }}
+          restore-keys: |
+            build-cache-
+            preflight-cache-
+
       - name: Prepare tree
+        env:
+          OPENWRT_COMMIT: ${{ needs.check.outputs.openwrt_sha }}
         run: bash scripts/prepare.sh
 
       - name: Prepare and compile kernel and ath11k sources
@@ -149,6 +168,15 @@ jobs:
 
           # Compile the patched backports/mac80211 modules against that kernel.
           make package/kernel/mac80211/compile -j2 V=s
+
+      - name: Save preflight caches
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            cache/dl
+            cache/ccache
+          key: preflight-cache-${{ github.run_id }}
 
   build:
     needs: [check, preflight]
@@ -180,7 +208,10 @@ jobs:
           cache/dl
           cache/ccache
         key: build-cache-${{ github.run_id }}
-        restore-keys: build-cache-
+        restore-keys: |
+          preflight-cache-${{ github.run_id }}
+          build-cache-
+          preflight-cache-
 
     - name: Set up Node.js for UnTangled build
       uses: actions/setup-node@v4
@@ -188,6 +219,8 @@ jobs:
         node-version: "22"
 
     - name: Prepare tree
+      env:
+        OPENWRT_COMMIT: ${{ needs.check.outputs.openwrt_sha }}
       run: bash scripts/prepare.sh
 
     - name: Download sources
