@@ -51,12 +51,9 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 
 --- a/drivers/net/wireless/ath/ath11k/dp_tx.c
 +++ b/drivers/net/wireless/ath/ath11k/dp_tx.c
-@@ -78,4 +78,33 @@ enum hal_encrypt_type ath11k_dp_tx_get_encrypt_type(u32 cipher)
- 	default:
- 		return HAL_ENCRYPT_TYPE_OPEN;
- 	}
- }
-+
+@@ -81,2 +81,31 @@ int ath11k_dp_tx(struct ath11k *ar, struct ath11k_vif *arvif,
+ 
+-int ath11k_dp_tx(struct ath11k *ar, struct ath11k_vif *arvif,
 +/* The caller holds tx_ring->tx_idr_lock. */
 +static struct sk_buff *ath11k_dp_tx_idr_remove(struct dp_tx_ring *tx_ring,
 +						       int msdu_id)
@@ -85,7 +82,8 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 +{
 +	return atomic_read(&tx_ring->num_txbuf) < DP_TX_IDR_SIZE - 1;
 +}
-
++
++int ath11k_dp_tx(struct ath11k *ar, struct ath11k_vif *arvif,
 @@ -123,4 +152,6 @@ int ath11k_dp_tx(struct ath11k *ar, struct ath11k_vif *arvif,
  	spin_lock_bh(&tx_ring->tx_idr_lock);
  	ret = idr_alloc(&tx_ring->txbuf_idr, skb, 0,
