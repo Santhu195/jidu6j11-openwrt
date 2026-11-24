@@ -170,7 +170,7 @@ jobs:
 
           # scripts/prepare.sh already ran make defconfig and validates all
           # six device profiles, required packages, DTS/BDF and dependencies.
-          grep -q '^CONFIG_TARGET_qualcommbe=y
+          echo "::notice::Preflight passed: source preparation, Ath11k patch checks and six-profile configuration validated; no compilation performed"
       - name: Save preflight caches
         if: always()
         uses: actions/cache/save@v4
