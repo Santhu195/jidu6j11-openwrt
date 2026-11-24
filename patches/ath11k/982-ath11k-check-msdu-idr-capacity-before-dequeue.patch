@@ -17,10 +17,10 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 ---
  drivers/net/wireless/ath/ath11k/dp.c    |  1 +
  drivers/net/wireless/ath/ath11k/dp.h    |  6 +++++-
- drivers/net/wireless/ath/ath11k/dp_tx.c | 55 +++++++++++++++++++++++++++++++++++++++++++++++-------
+ drivers/net/wireless/ath/ath11k/dp_tx.c | 57 ++++++++++++++++++++++++++++++++++++++++++++++++++-------
  drivers/net/wireless/ath/ath11k/dp_tx.h |  1 +
  drivers/net/wireless/ath/ath11k/mac.c   |  7 ++++---
- 5 files changed, 60 insertions(+), 10 deletions(-)
+ 5 files changed, 61 insertions(+), 11 deletions(-)
 
 --- a/drivers/net/wireless/ath/ath11k/dp.c
 +++ b/drivers/net/wireless/ath/ath11k/dp.c
