@@ -135,7 +135,7 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 
 --- a/drivers/net/wireless/ath/ath11k/mac.c
 +++ b/drivers/net/wireless/ath/ath11k/mac.c
-@@ -10103,5 +10103,6 @@ static int ath11k_mac_tx_push_txq(struct ath11k *ar, struct ieee80211_txq *txq)
+@@ -10133,5 +10133,6 @@ static int ath11k_mac_tx_push_txq(struct ath11k *ar, struct ieee80211_txq *txq)
  	/* ieee80211_tx_dequeue() applies the airtime queue limit, so a
  	 * selection ends where that limit binds or the queue empties. A full
 -	 * TCL ring ends the whole round, and so does a frame the hardware
