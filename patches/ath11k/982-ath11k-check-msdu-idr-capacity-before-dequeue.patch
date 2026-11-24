@@ -16,11 +16,11 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 
 ---
  drivers/net/wireless/ath/ath11k/dp.c    |  1 +
- drivers/net/wireless/ath/ath11k/dp.h    |  4 +++-
- drivers/net/wireless/ath/ath11k/dp_tx.c | 35 ++++++++++++++++++++++++++-------
+ drivers/net/wireless/ath/ath11k/dp.h    |  6 +++++-
+ drivers/net/wireless/ath/ath11k/dp_tx.c | 43 +++++++++++++++++++++++++++++++++++++++------
  drivers/net/wireless/ath/ath11k/dp_tx.h |  1 +
  drivers/net/wireless/ath/ath11k/mac.c   |  7 ++++---
- 5 files changed, 37 insertions(+), 11 deletions(-)
+ 5 files changed, 48 insertions(+), 10 deletions(-)
 
 --- a/drivers/net/wireless/ath/ath11k/dp.c
 +++ b/drivers/net/wireless/ath/ath11k/dp.c
@@ -94,7 +94,7 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 +		atomic_inc(&tx_ring->num_txbuf);
  	spin_unlock_bh(&tx_ring->tx_idr_lock);
 
-@@ -275,5 +306,5 @@ fail_remove_idr:
+@@ -276,4 +307,4 @@ fail_remove_idr:
  	spin_lock_bh(&tx_ring->tx_idr_lock);
 -	idr_remove(&tx_ring->txbuf_idr,
 -		   FIELD_GET(DP_TX_DESC_ID_MSDU_ID, ti.desc_id));
@@ -128,7 +128,7 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 
 --- a/drivers/net/wireless/ath/ath11k/dp_tx.h
 +++ b/drivers/net/wireless/ath/ath11k/dp_tx.h
-@@ -22,3 +22,4 @@ int ath11k_dp_tx(struct ath11k *ar, struct ath11k_vif *arvif,
+@@ -23,2 +23,3 @@ int ath11k_dp_tx(struct ath11k *ar, struct ath11k_vif *arvif,
  		 struct ath11k_sta *arsta, struct sk_buff *skb);
 +bool ath11k_dp_tx_idr_has_room(struct dp_tx_ring *tx_ring);
  void ath11k_dp_tx_completion_handler(struct ath11k_base *ab, int ring_id);
