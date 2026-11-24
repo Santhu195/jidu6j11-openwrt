@@ -259,9 +259,9 @@ if "$(INSTALL_BIN) $(PKG_BUILD_DIR)/iwinfo $(1)/usr/bin/iwinfo" not in legacy_br
 if not ucode_command.is_file() or not os.access(ucode_command, os.X_OK):
     raise SystemExit("::error::wifi-scripts UCODE /usr/bin/iwinfo command is missing or not executable")
 
-if not re.search(
-    r"(?ms)ifeq \(\$\(CONFIG_WIFI_SCRIPTS_UCODE\),y\).*?\$\(CP\) ./files-ucode/\* \(1\)/",
-    wifi_scripts,
+if (
+    "ifeq ($(CONFIG_WIFI_SCRIPTS_UCODE),y)" not in wifi_scripts
+    or "$(CP) ./files-ucode/* $(1)/" not in wifi_scripts
 ):
     raise SystemExit("::error::wifi-scripts no longer installs its UCODE command tree when UCODE mode is enabled")
 
