@@ -145,6 +145,7 @@ jobs:
         key: openwrt-cache-v2-${{ runner.os }}-${{ env.TARGET }}-${{ env.SUBTARGET }}-${{ hashFiles('config/base.diffconfig', 'config/extra-packages.txt', 'patches/**', 'bdf/**', 'feeds.conf.default.d/**') }}-${{ github.run_id }}
         restore-keys: |
           openwrt-cache-v2-${{ runner.os }}-${{ env.TARGET }}-${{ env.SUBTARGET }}-${{ hashFiles('config/base.diffconfig', 'config/extra-packages.txt', 'patches/**', 'bdf/**', 'feeds.conf.default.d/**') }}-
+          build-cache-
 
     - name: Set up Node.js for UnTangled build
       uses: actions/setup-node@v4
