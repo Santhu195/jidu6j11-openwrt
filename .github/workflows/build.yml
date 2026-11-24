@@ -141,10 +141,9 @@ jobs:
           cache/ccache
           cache/npm
         key: openwrt-cache-v2-${{ runner.os }}-${{ env.TARGET }}-${{ env.SUBTARGET }}-${{ hashFiles('config/base.diffconfig', 'config/extra-packages.txt', 'patches/**', 'bdf/**', 'feeds.conf.default.d/**') }}-${{ github.run_id }}
+        # Reuse the same config first, then the latest cache for this target.
+        # ccache validates compiler identity before reusing cached objects.
         restore-keys: |
-          # Prefer the same build configuration, then reuse downloads and
-          # compiler objects from the latest compatible target cache. ccache
-          # validates compiler identity before reusing any object.
           openwrt-cache-v2-${{ runner.os }}-${{ env.TARGET }}-${{ env.SUBTARGET }}-${{ hashFiles('config/base.diffconfig', 'config/extra-packages.txt', 'patches/**', 'bdf/**', 'feeds.conf.default.d/**') }}-
           openwrt-cache-v2-${{ runner.os }}-${{ env.TARGET }}-${{ env.SUBTARGET }}-
           build-cache-
