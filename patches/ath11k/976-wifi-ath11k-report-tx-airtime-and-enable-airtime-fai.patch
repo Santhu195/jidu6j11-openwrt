@@ -44,7 +44,6 @@ Signed-off-by: Julius Bairaktaris <julius@bairaktaris.de>
 +			      max_t(u8, common->num_users, 1);
  
  	user_rate = &usr_stats->rate;
-
 @@ -1485,6 +1486,22 @@ ath11k_update_per_peer_tx_stats(struct a
  
  	arsta->txrate.bw = ath11k_mac_bw_to_mac80211_bw(bw);

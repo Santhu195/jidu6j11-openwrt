@@ -20,6 +20,9 @@ git config --global user.name "ci"
 git config --global user.email "ci@localhost"
 shopt -s nullglob
 
+# Lint custom ath11k patch hunks before cloning feeds or compiling anything.
+python3 "$ROOT/scripts/verify-patch-series.py" "$ROOT/patches/ath11k"
+
 echo "::group::Clone OpenWrt"
 rm -rf openwrt
 git clone --branch "$OPENWRT_BRANCH" "$OPENWRT_REPO" openwrt
