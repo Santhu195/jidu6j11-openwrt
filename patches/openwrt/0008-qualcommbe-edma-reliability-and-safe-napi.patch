@@ -1,0 +1,380 @@
+From 2556900000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: OpenWrt EDMA backport integration
+Subject: [PATCH] qualcommbe: add safe NAPI budgets and three EDMA reliability fixes
+
+Carry #25405 and all three fixes from #25569. The upstream PRs both
+used patch number 0363, so keep the safe NAPI budget fix at 0363 and
+renumber the #25569 series to 0364-0366 to preserve a unique,
+deterministic patch order. Current main ends its EDMA series at 0362.
+
+---
+diff --git a/target/linux/qualcommbe/patches-6.18/0363-net-ethernet-qualcomm-honor-safe-NAPI-budgets.patch b/target/linux/qualcommbe/patches-6.18/0363-net-ethernet-qualcomm-honor-safe-NAPI-budgets.patch
+new file mode 100644
+--- /dev/null
++++ b/target/linux/qualcommbe/patches-6.18/0363-net-ethernet-qualcomm-honor-safe-NAPI-budgets.patch
+@@ -0,0 +1,96 @@
++From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
++From: Yang Zhengguo <yangzhgg@gmail.com>
++Date: Sun, 16 Aug 2026 00:41:53 +0800
++Subject: [PATCH] net: ethernet: qualcomm: honor safe NAPI budgets
++
++The EDMA module parameters are validated and reported, but the NAPI instances
++are registered with the fixed values from edma_hw_info instead.  On IPQ9574
++the TX value is 512, which makes the networking core emit a warning because
++it exceeds NAPI_POLL_WEIGHT.
++
++Use the validated module parameters when registering RX and TX NAPI, limit
++them to the networking core's standard budget, and make the IPQ9574 fallback
++safe as well.
++
++Signed-off-by: Yang Zhengguo <yangzhgg@gmail.com>
++Signed-off-by: Jackie Han <jackie.han@gmail.com>
++
++--- a/drivers/net/ethernet/qualcomm/ppe/edma.c
+++++ b/drivers/net/ethernet/qualcomm/ppe/edma.c
++@@ -41,11 +41,11 @@ MODULE_PARM_DESC(rx_buff_size, "Rx Buffe
++ 
++ int edma_rx_napi_budget = EDMA_RX_NAPI_WORK_DEF;
++ module_param(edma_rx_napi_budget, int, 0444);
++-MODULE_PARM_DESC(edma_rx_napi_budget, "Rx NAPI budget (default:128, min:16, max:512)");
+++MODULE_PARM_DESC(edma_rx_napi_budget, "Rx NAPI budget (default:64, min:16, max:64)");
++ 
++ int edma_tx_napi_budget = EDMA_TX_NAPI_WORK_DEF;
++ module_param(edma_tx_napi_budget, int, 0444);
++-MODULE_PARM_DESC(edma_tx_napi_budget, "Tx NAPI budget (default:512 for ipq95xx, min:16, max:512)");
+++MODULE_PARM_DESC(edma_tx_napi_budget, "Tx NAPI budget (default:64, min:16, max:64)");
++ 
++ int edma_rx_mitigation_pkt_cnt = EDMA_RX_MITIGATION_PKT_CNT_DEF;
++ module_param(edma_rx_mitigation_pkt_cnt, int, 0444);
++@@ -122,7 +122,7 @@ static struct edma_hw_info ipq9574_hw_in
++ 	.txcmpl = &ipq9574_txcmpl_ring_info,
++ 	.max_ports = 6,
++ 	.napi_budget_rx = 32,
++-	.napi_budget_tx = 512,
+++	.napi_budget_tx = 64,
++ };
++ 
++ static int edma_clock_set_and_enable(struct device *dev,
++--- a/drivers/net/ethernet/qualcomm/ppe/edma_cfg_rx.c
+++++ b/drivers/net/ethernet/qualcomm/ppe/edma_cfg_rx.c
++@@ -978,7 +978,7 @@ void edma_cfg_rx_napi_add(void)
++ 		struct edma_rxdesc_ring *rxdesc_ring = &edma_ctx->rx_rings[i];
++ 
++ 		netif_napi_add_weight(edma_ctx->dummy_dev, &rxdesc_ring->napi,
++-				      edma_rx_napi_poll, hw_info->napi_budget_rx);
+++				      edma_rx_napi_poll, edma_rx_napi_budget);
++ 		rxdesc_ring->napi_added = true;
++ 	}
++ 
++--- a/drivers/net/ethernet/qualcomm/ppe/edma_cfg_rx.h
+++++ b/drivers/net/ethernet/qualcomm/ppe/edma_cfg_rx.h
++@@ -6,13 +6,13 @@
++ #define __EDMA_CFG_RX__
++ 
++ /* Rx default NAPI budget */
++-#define EDMA_RX_NAPI_WORK_DEF		128
+++#define EDMA_RX_NAPI_WORK_DEF		64
++ 
++ /* RX minimum NAPI budget */
++ #define EDMA_RX_NAPI_WORK_MIN		16
++ 
++ /* Rx maximum NAPI budget */
++-#define EDMA_RX_NAPI_WORK_MAX		512
+++#define EDMA_RX_NAPI_WORK_MAX		64
++ 
++ /* SKB payload size used in page mode */
++ #define EDMA_RX_PAGE_MODE_SKB_SIZE	256
++--- a/drivers/net/ethernet/qualcomm/ppe/edma_cfg_tx.c
+++++ b/drivers/net/ethernet/qualcomm/ppe/edma_cfg_tx.c
++@@ -664,7 +664,7 @@ void edma_cfg_tx_napi_add(struct net_dev
++ 		ring_idx = ((port_id - 1) * num_possible_cpus()) + i;
++ 		txcmpl_ring = &edma_ctx->txcmpl_rings[ring_idx];
++ 		netif_napi_add_weight(netdev, &txcmpl_ring->napi,
++-				      edma_tx_napi_poll, hw_info->napi_budget_tx);
+++				      edma_tx_napi_poll, edma_tx_napi_budget);
++ 		txcmpl_ring->napi_added = true;
++ 		netdev_dbg(netdev, "Napi added for Tx cmpl ring: %u\n", txcmpl_ring->id);
++ 	}
++--- a/drivers/net/ethernet/qualcomm/ppe/edma_cfg_tx.h
+++++ b/drivers/net/ethernet/qualcomm/ppe/edma_cfg_tx.h
++@@ -5,9 +5,9 @@
++ #ifndef __EDMA_CFG_TX__
++ #define __EDMA_CFG_TX__
++ 
++-#define EDMA_TX_NAPI_WORK_DEF	512
+++#define EDMA_TX_NAPI_WORK_DEF	64
++ #define EDMA_TX_NAPI_WORK_MIN	16
++-#define EDMA_TX_NAPI_WORK_MAX	512
+++#define EDMA_TX_NAPI_WORK_MAX	64
++ 
++ /* Tx mitigation timer's default value. */
++ #define EDMA_TX_MITIGATION_TIMER_DEF	250
+
+diff --git a/target/linux/qualcommbe/patches-6.18/0364-net-ethernet-qualcomm-ppe-fix-NAPI-disable-hang.patch b/target/linux/qualcommbe/patches-6.18/0364-net-ethernet-qualcomm-ppe-fix-NAPI-disable-hang.patch
+new file mode 100644
+--- /dev/null
++++ b/target/linux/qualcommbe/patches-6.18/0364-net-ethernet-qualcomm-ppe-fix-NAPI-disable-hang.patch
+@@ -0,0 +1,144 @@
++From 73f804296d538587464a63e16ca9baee22390079 Mon Sep 17 00:00:00 2001
++From: Timofey Maykov <itnitro@gmail.com>
++Date: Sat, 3 Oct 2026 12:33:50 +0000
++Subject: [PATCH] net: ethernet: qualcomm: ppe: fix NAPI disable hang
++
++edma_cfg_rx_napi_delete() and edma_cfg_tx_napi_delete() call
++napi_disable() unconditionally. A NAPI context is created disabled, and
++the callers disable it again before deleting it (the rx error path and
++edma_deinit() call edma_cfg_rx_napi_disable() right before the delete,
++a stopped port has already run edma_cfg_tx_napi_disable()). A second
++napi_disable() on a disabled NAPI waits for NAPI_STATE_SCHED to clear
++and never returns, so a probe error or a module removal hangs with the
++RTNL lock held and the boot does not continue.
++
++Remember in the ring whether NAPI is enabled and only disable it when
++it is. The same flag keeps a repeated enable or disable from doing it
++twice.
++
++Signed-off-by: Timofey Maykov <itnitro@gmail.com>
++---
++ drivers/net/ethernet/qualcomm/ppe/edma_cfg_rx.c | 12 +++++++++---
++ drivers/net/ethernet/qualcomm/ppe/edma_cfg_tx.c | 12 +++++++++---
++ drivers/net/ethernet/qualcomm/ppe/edma_rx.h     |  2 ++
++ drivers/net/ethernet/qualcomm/ppe/edma_tx.h     |  2 ++
++ 4 files changed, 22 insertions(+), 6 deletions(-)
++
++--- a/drivers/net/ethernet/qualcomm/ppe/edma_cfg_rx.c
+++++ b/drivers/net/ethernet/qualcomm/ppe/edma_cfg_rx.c
++@@ -899,10 +899,11 @@ void edma_cfg_rx_napi_disable(void)
++ 
++ 		rxdesc_ring = &edma_ctx->rx_rings[i];
++ 
++-		if (!rxdesc_ring->napi_added)
+++		if (!rxdesc_ring->napi_added || !rxdesc_ring->napi_enabled)
++ 			continue;
++ 
++ 		napi_disable(&rxdesc_ring->napi);
+++		rxdesc_ring->napi_enabled = false;
++ 	}
++ }
++ 
++@@ -922,10 +923,11 @@ void edma_cfg_rx_napi_enable(void)
++ 
++ 		rxdesc_ring = &edma_ctx->rx_rings[i];
++ 
++-		if (!rxdesc_ring->napi_added)
+++		if (!rxdesc_ring->napi_added || rxdesc_ring->napi_enabled)
++ 			continue;
++ 
++ 		napi_enable(&rxdesc_ring->napi);
+++		rxdesc_ring->napi_enabled = true;
++ 	}
++ }
++ 
++@@ -948,7 +950,11 @@ void edma_cfg_rx_napi_delete(void)
++ 		if (!rxdesc_ring->napi_added)
++ 			continue;
++ 
++-		napi_disable(&rxdesc_ring->napi);
+++		/* napi_disable() on a NAPI that is already disabled never returns */
+++		if (rxdesc_ring->napi_enabled) {
+++			napi_disable(&rxdesc_ring->napi);
+++			rxdesc_ring->napi_enabled = false;
+++		}
++ 		netif_napi_del(&rxdesc_ring->napi);
++ 		rxdesc_ring->napi_added = false;
++ 	}
++--- a/drivers/net/ethernet/qualcomm/ppe/edma_cfg_tx.c
+++++ b/drivers/net/ethernet/qualcomm/ppe/edma_cfg_tx.c
++@@ -586,10 +586,11 @@ void edma_cfg_tx_napi_enable(u32 port_id
++ 	for_each_possible_cpu(i) {
++ 		ring_idx = ((port_id - 1) * num_possible_cpus()) + i;
++ 		txcmpl_ring = &edma_ctx->txcmpl_rings[ring_idx];
++-		if (!txcmpl_ring->napi_added)
+++		if (!txcmpl_ring->napi_added || txcmpl_ring->napi_enabled)
++ 			continue;
++ 
++ 		napi_enable(&txcmpl_ring->napi);
+++		txcmpl_ring->napi_enabled = true;
++ 	}
++ }
++ 
++@@ -608,10 +609,11 @@ void edma_cfg_tx_napi_disable(u32 port_i
++ 	for_each_possible_cpu(i) {
++ 		ring_idx = ((port_id - 1) * num_possible_cpus()) + i;
++ 		txcmpl_ring = &edma_ctx->txcmpl_rings[ring_idx];
++-		if (!txcmpl_ring->napi_added)
+++		if (!txcmpl_ring->napi_added || !txcmpl_ring->napi_enabled)
++ 			continue;
++ 
++ 		napi_disable(&txcmpl_ring->napi);
+++		txcmpl_ring->napi_enabled = false;
++ 	}
++ }
++ 
++@@ -633,7 +635,11 @@ void edma_cfg_tx_napi_delete(u32 port_id
++ 		if (!txcmpl_ring->napi_added)
++ 			continue;
++ 
++-		napi_disable(&txcmpl_ring->napi);
+++		/* napi_disable() on a NAPI that is already disabled never returns */
+++		if (txcmpl_ring->napi_enabled) {
+++			napi_disable(&txcmpl_ring->napi);
+++			txcmpl_ring->napi_enabled = false;
+++		}
++ 		netif_napi_del(&txcmpl_ring->napi);
++ 		txcmpl_ring->napi_added = false;
++ 	}
++--- a/drivers/net/ethernet/qualcomm/ppe/edma_rx.h
+++++ b/drivers/net/ethernet/qualcomm/ppe/edma_rx.h
++@@ -260,6 +260,7 @@ struct edma_rxfill_ring {
++  * @rxdesc_stats: Rx descriptor ring statistics
++  * @rxfill: RxFill ring used
++  * @napi_added: Flag to indicate NAPI add status
+++ * @napi_enabled: Flag to indicate NAPI is enabled
++  * @pdma: Primary descriptor ring physical address
++  * @sdma: Secondary descriptor ring physical address
++  * @head: Head of the skb list in case of scatter-gather frame
++@@ -277,6 +278,7 @@ struct edma_rxdesc_ring {
++ 	struct edma_rxdesc_stats rxdesc_stats;
++ 	struct edma_rxfill_ring *rxfill;
++ 	bool napi_added;
+++	bool napi_enabled;
++ 	dma_addr_t pdma;
++ 	dma_addr_t sdma;
++ 	struct sk_buff *head;
++--- a/drivers/net/ethernet/qualcomm/ppe/edma_tx.h
+++++ b/drivers/net/ethernet/qualcomm/ppe/edma_tx.h
++@@ -275,6 +275,7 @@ struct edma_txdesc_ring {
++  * @dma: Descriptor ring physical address
++  * @count: Number of descriptors in the ring
++  * @napi_added: Flag to indicate NAPI add status
+++ * @napi_enabled: Flag to indicate NAPI is enabled
++  */
++ struct edma_txcmpl_ring {
++ 	struct napi_struct napi;
++@@ -286,6 +287,7 @@ struct edma_txcmpl_ring {
++ 	dma_addr_t dma;
++ 	u32 count;
++ 	bool napi_added;
+++	bool napi_enabled;
++ };
++ 
++ extern int edma_tx_napi_budget;
+
+diff --git a/target/linux/qualcommbe/patches-6.18/0365-net-ethernet-qualcomm-ppe-fix-port-unwind-in-ppe_port_mac_init.patch b/target/linux/qualcommbe/patches-6.18/0365-net-ethernet-qualcomm-ppe-fix-port-unwind-in-ppe_port_mac_init.patch
+new file mode 100644
+--- /dev/null
++++ b/target/linux/qualcommbe/patches-6.18/0365-net-ethernet-qualcomm-ppe-fix-port-unwind-in-ppe_port_mac_init.patch
+@@ -0,0 +1,52 @@
++From 82568cd3ec5853f437d2336d84e5aecbd39778ca Mon Sep 17 00:00:00 2001
++From: Timofey Maykov <itnitro@gmail.com>
++Date: Sat, 3 Oct 2026 12:33:56 +0000
++Subject: [PATCH] net: ethernet: qualcomm: ppe: fix port unwind in
++ ppe_port_mac_init()
++
++When edma_port_setup() fails, ppe_port_mac_init() decrements i and then
++destroys the EDMA ports with while (i >= 0), which leaves i at -1. The
++following while (i) in err_port_clk is true for -1 and calls
++ppe_port_clock_deinit() on port[-2], port[-3], and so on, walking before
++the start of the array. A failure on the first port does it too.
++
++Release the clocks of the port that failed explicitly, then unwind the
++earlier ports with a loop that stops at 0. Their EDMA ports and clocks
++are released together, so the err_port_clk loop no longer runs for them.
++
++Signed-off-by: Timofey Maykov <itnitro@gmail.com>
++---
++ drivers/net/ethernet/qualcomm/ppe/ppe_port.c | 14 ++++++++++----
++ 1 file changed, 10 insertions(+), 4 deletions(-)
++
++--- a/drivers/net/ethernet/qualcomm/ppe/ppe_port.c
+++++ b/drivers/net/ethernet/qualcomm/ppe/ppe_port.c
++@@ -1397,7 +1397,6 @@ int ppe_port_mac_init(struct ppe_device
++ 		ret = edma_port_setup(&ppe_ports->port[i]);
++ 		if (ret) {
++ 			dev_err(ppe_dev->dev, "QCOM EDMA port setup failed\n");
++-			i--;
++ 			goto err_port_setup;
++ 		}
++ 
++@@ -1408,10 +1407,17 @@ int ppe_port_mac_init(struct ppe_device
++ 	return 0;
++ 
++ err_port_setup:
++-	/* Destroy edma ports created till now */
++-	while (i >= 0) {
++-		edma_port_destroy(&ppe_ports->port[i]);
+++	/* Clocks of the port whose EDMA setup failed */
+++	ppe_port_clock_deinit(&ppe_ports->port[i]);
+++
+++	/* Destroy the EDMA ports created so far and release their clocks.
+++	 * Do not let 'i' go negative: the err_port_clk loop below tests
+++	 * 'while (i)' and would otherwise walk before the ports array.
+++	 */
+++	while (i > 0) {
++ 		i--;
+++		edma_port_destroy(&ppe_ports->port[i]);
+++		ppe_port_clock_deinit(&ppe_ports->port[i]);
++ 	}
++ 
++ err_port_clk:
+
+diff --git a/target/linux/qualcommbe/patches-6.18/0366-net-ethernet-qualcomm-ppe-edma-rx-do-not-reuse-a-freed-skb.patch b/target/linux/qualcommbe/patches-6.18/0366-net-ethernet-qualcomm-ppe-edma-rx-do-not-reuse-a-freed-skb.patch
+new file mode 100644
+--- /dev/null
++++ b/target/linux/qualcommbe/patches-6.18/0366-net-ethernet-qualcomm-ppe-edma-rx-do-not-reuse-a-freed-skb.patch
+@@ -0,0 +1,53 @@
++From 8970202b6e998f8b59a6fa4a5a7210a4e2c4c431 Mon Sep 17 00:00:00 2001
++From: Timofey Maykov <itnitro@gmail.com>
++Date: Sat, 3 Oct 2026 12:34:09 +0000
++Subject: [PATCH] net: ethernet: qualcomm: ppe: edma rx: do not reuse a
++ freed skb
++
++edma_rx_reap() reads the skb of the next descriptor from its opaque field
++only on the delivery path and on the scatter path. When the source port of
++a frame is unknown, edma_rx_get_src_dev() fails, the skb is freed and the
++loop goes to next_rx_desc without updating next_skb. The next round then
++starts with skb = next_skb, which still points at the skb that was just
++freed, and unmaps and processes it a second time.
++
++Read next_skb once per round, right after the next descriptor is fetched.
++
++Signed-off-by: Timofey Maykov <itnitro@gmail.com>
++---
++ drivers/net/ethernet/qualcomm/ppe/edma_rx.c | 10 +++++-----
++ 1 file changed, 5 insertions(+), 5 deletions(-)
++
++--- a/drivers/net/ethernet/qualcomm/ppe/edma_rx.c
+++++ b/drivers/net/ethernet/qualcomm/ppe/edma_rx.c
++@@ -502,6 +502,11 @@ static int edma_rx_reap(struct edma_rxde
++ 		/* Get the next Rx descriptor. */
++ 		next_rxdesc_pri = EDMA_RXDESC_PRI_DESC(rxdesc_ring, cons_idx);
++ 
+++		/* Take the next skb before any path that drops the frame and
+++		 * jumps to next_rx_desc, it must not keep the freed one.
+++		 */
+++		next_skb = (struct sk_buff *)EDMA_RXDESC_OPAQUE_GET(next_rxdesc_pri);
+++
++ 		/* Handle linear packets or initial segments first. */
++ 		if (likely(!(rxdesc_ring->head))) {
++ 			ndev = edma_rx_get_src_dev(rxdesc_stats, rxdesc_pri, skb);
++@@ -516,9 +521,6 @@ static int edma_rx_reap(struct edma_rxde
++ 
++ 			/* Handle linear packets. */
++ 			if (likely(!EDMA_RXDESC_MORE_BIT_GET(rxdesc_pri))) {
++-				next_skb =
++-					(struct sk_buff *)EDMA_RXDESC_OPAQUE_GET(next_rxdesc_pri);
++-
++ 				if (unlikely(!
++ 					     edma_rx_handle_linear_packets(rxdesc_ring,
++ 									   rxdesc_pri, skb)))
++@@ -528,8 +530,6 @@ static int edma_rx_reap(struct edma_rxde
++ 			}
++ 		}
++ 
++-		next_skb = (struct sk_buff *)EDMA_RXDESC_OPAQUE_GET(next_rxdesc_pri);
++-
++ 		/* Handle scatter frame processing for first/middle/last segments. */
++ 		page_mode ? edma_rx_handle_nr_frags(rxdesc_ring, rxdesc_pri, skb) :
++ 			edma_rx_handle_frag_list(rxdesc_ring, rxdesc_pri, skb);
+--
+2.43.0
