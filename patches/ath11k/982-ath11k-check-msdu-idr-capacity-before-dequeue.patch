@@ -25,7 +25,7 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 --- a/drivers/net/wireless/ath/ath11k/dp.c
 +++ b/drivers/net/wireless/ath/ath11k/dp.c
 @@ -1089,5 +1089,6 @@ int ath11k_dp_alloc(struct ath11k_base *ab)
- 	for (i = 0; i < ab->hw_params.max_tx_ring; i++) {
+ 	for (i = 0; i < ab->hw_params.hal_params->num_tx_rings; i++) {
  		idr_init(&dp->tx_ring[i].txbuf_idr);
 +		atomic_set(&dp->tx_ring[i].num_txbuf, 0);
  		spin_lock_init(&dp->tx_ring[i].tx_idr_lock);
@@ -51,7 +51,7 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 
 --- a/drivers/net/wireless/ath/ath11k/dp_tx.c
 +++ b/drivers/net/wireless/ath/ath11k/dp_tx.c
-@@ -78,4 +78,32 @@ enum hal_encrypt_type ath11k_dp_tx_get_encrypt_type(u32 cipher)
+@@ -78,4 +78,33 @@ enum hal_encrypt_type ath11k_dp_tx_get_encrypt_type(u32 cipher)
  	default:
  		return HAL_ENCRYPT_TYPE_OPEN;
  	}
@@ -86,7 +86,7 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 +	return atomic_read(&tx_ring->num_txbuf) < DP_TX_IDR_SIZE - 1;
 +}
 
-@@ -123,4 +151,6 @@ int ath11k_dp_tx(struct ath11k *ar, struct ath11k_vif *arvif,
+@@ -123,4 +152,6 @@ int ath11k_dp_tx(struct ath11k *ar, struct ath11k_vif *arvif,
  	spin_lock_bh(&tx_ring->tx_idr_lock);
  	ret = idr_alloc(&tx_ring->txbuf_idr, skb, 0,
  			DP_TX_IDR_SIZE - 1, GFP_ATOMIC);
@@ -94,7 +94,7 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 +		atomic_inc(&tx_ring->num_txbuf);
  	spin_unlock_bh(&tx_ring->tx_idr_lock);
 
-@@ -275,5 +305,5 @@ fail_remove_idr:
+@@ -275,5 +306,5 @@ fail_remove_idr:
  	spin_lock_bh(&tx_ring->tx_idr_lock);
 -	idr_remove(&tx_ring->txbuf_idr,
 -		   FIELD_GET(DP_TX_DESC_ID_MSDU_ID, ti.desc_id));
@@ -102,25 +102,25 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 +				FIELD_GET(DP_TX_DESC_ID_MSDU_ID, ti.desc_id));
  	spin_unlock_bh(&tx_ring->tx_idr_lock);
 
-@@ -295,3 +325,3 @@ static void ath11k_dp_tx_free_txbuf(struct ath11k_base *ab, u8 mac_id,
+@@ -295,3 +326,3 @@ static void ath11k_dp_tx_free_txbuf(struct ath11k_base *ab, u8 mac_id,
  	spin_lock(&tx_ring->tx_idr_lock);
 -	msdu = idr_remove(&tx_ring->txbuf_idr, msdu_id);
 +	msdu = ath11k_dp_tx_idr_remove(tx_ring, msdu_id);
  	spin_unlock(&tx_ring->tx_idr_lock);
 
-@@ -338,3 +368,3 @@ void ath11k_dp_tx_free_pending(struct ath11k_base *ab)
+@@ -338,3 +369,3 @@ void ath11k_dp_tx_free_pending(struct ath11k_base *ab)
  	idr_for_each_entry(&tx_ring->txbuf_idr, msdu, msdu_id) {
 -		idr_remove(&tx_ring->txbuf_idr, msdu_id);
 +		ath11k_dp_tx_idr_remove(tx_ring, msdu_id);
  		__skb_queue_tail(&pending, msdu);
 
-@@ -366,3 +396,3 @@ static void ath11k_dp_tx_htt_tx_complete_buf(struct ath11k_base *ab,
+@@ -366,3 +397,3 @@ static void ath11k_dp_tx_htt_tx_complete_buf(struct ath11k_base *ab,
  	spin_lock(&tx_ring->tx_idr_lock);
 -	msdu = idr_remove(&tx_ring->txbuf_idr, ts->msdu_id);
 +	msdu = ath11k_dp_tx_idr_remove(tx_ring, ts->msdu_id);
  	spin_unlock(&tx_ring->tx_idr_lock);
 
-@@ -795,3 +825,3 @@ void ath11k_dp_tx_completion_handler(struct ath11k_base *ab, int ring_id)
+@@ -795,3 +826,3 @@ void ath11k_dp_tx_completion_handler(struct ath11k_base *ab, int ring_id)
  		spin_lock(&tx_ring->tx_idr_lock);
 -		msdu = idr_remove(&tx_ring->txbuf_idr, msdu_id);
 +		msdu = ath11k_dp_tx_idr_remove(tx_ring, msdu_id);
@@ -145,7 +145,7 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 +	 * long as a frame in flight will restart it.
  	 */
 
-@@ -10143,4 +10144,4 @@ static int ath11k_mac_tx_push_txq(struct ath11k *ar, struct ieee80211_txq *txq)
+@@ -10149,4 +10149,4 @@ static int ath11k_mac_tx_push_txq(struct ath11k *ar, struct ieee80211_txq *txq)
 -		if (num_free == 0) {
 +		if (num_free == 0 || !ath11k_dp_tx_idr_has_room(tx_ring)) {
  			spin_unlock_bh(&tx_ring->wake_tx_lock);
