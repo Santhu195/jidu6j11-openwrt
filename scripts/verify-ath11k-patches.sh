@@ -28,6 +28,7 @@ DPTX="$SRC/drivers/net/wireless/ath/ath11k/dp_tx.c"
 DPTXH="$SRC/drivers/net/wireless/ath/ath11k/dp_tx.h"
 DPRX="$SRC/drivers/net/wireless/ath/ath11k/dp_rx.c"
 CORE="$SRC/drivers/net/wireless/ath/ath11k/core.c"
+COREH="$SRC/drivers/net/wireless/ath/ath11k/core.h"
 MAC="$SRC/drivers/net/wireless/ath/ath11k/mac.c"
 MACH="$SRC/drivers/net/wireless/ath/ath11k/mac.h"
 MAC_TX="$SRC/net/mac80211/tx.c"
@@ -36,7 +37,7 @@ MAC_STATUS="$SRC/net/mac80211/status.c"
 PCIC="$SRC/drivers/net/wireless/ath/ath11k/pcic.c"
 AHB="$SRC/drivers/net/wireless/ath/ath11k/ahb.c"
 
-for file in "$DP" "$DPH" "$DPTX" "$DPTXH" "$DPRX" "$CORE" "$MAC" "$MACH" "$MAC_TX" "$MAC_IH" "$MAC_STATUS" "$PCIC" "$AHB"; do
+for file in "$DP" "$DPH" "$DPTX" "$DPTXH" "$DPRX" "$CORE" "$COREH" "$MAC" "$MACH" "$MAC_TX" "$MAC_IH" "$MAC_STATUS" "$PCIC" "$AHB"; do
   [ -s "$file" ] || { echo "::error::Ath11k preflight: missing patched source $file"; exit 1; }
 done
 
@@ -60,7 +61,7 @@ require_count "$DPRX" "ieee80211_sta_register_airtime(sta, airtime_tid, tx_durat
 require_text "$DPRX" "ieee80211_sta_register_airtime(peer->sta, tid, 0," "RX airtime accounting call"
 
 # #25982 exposes firmware PPDU retry counts through nl80211 station statistics.
-require_text "$CORE" "u32 tx_retries;" "per-station TX retry counter"
+require_text "$COREH" "u32 tx_retries;" "per-station TX retry counter"
 require_text "$DPRX" "arsta->tx_retries +=" "HTT PPDU retry accumulation"
 require_text "$MAC" "sinfo->tx_retries = arsta->tx_retries;" "station TX retry export"
 require_text "$MAC" "NL80211_STA_INFO_TX_RETRIES" "station TX retry statistics flag"
