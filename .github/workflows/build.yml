@@ -181,10 +181,7 @@ jobs:
       working-directory: openwrt
       env:
         BUILD_TIME_LOG: build-time.log
-      run: |
-        echo "Compiler cache before build:"
-        staging_dir/host/bin/ccache -s
-        make -j"$(($(nproc) + 1))
+      run: make -j"$(($(nproc) + 1))"
 
     - name: Save caches
       if: always()
