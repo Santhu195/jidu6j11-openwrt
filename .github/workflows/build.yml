@@ -191,6 +191,16 @@ jobs:
         fi
         bash ../scripts/verify-edma-tx-queue-wake.sh "$edma_tx"
 
+        edma=$(find build_dir/target-* -type f \
+          -path '*/drivers/net/ethernet/qualcomm/ppe/edma.c' -print -quit)
+        if [ -z "$edma" ]; then
+          echo "::error::Prepared Qualcomm EDMA source was not found"
+          exit 1
+        fi
+        # Verify RX ring IRQ distribution and cleanup. TX completion IRQ
+        # placement remains unchanged until device-level benchmarks justify it.
+        bash ../scripts/verify-edma-rx-irq-affinity.sh "$edma"
+
         echo "::notice::Pre-build patch validation passed; no compilation performed"
 
     - name: Build
