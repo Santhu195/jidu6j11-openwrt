@@ -98,7 +98,7 @@ def main() -> int:
     if min(duration, assignment, registration) < 0 or not (duration < assignment < registration):
         return fail("TX airtime selection/registration is missing or out of order within the target function")
 
-    if len(re.findall(r"\bairtime_tid\b", body)) != 6:
+    if len(re.findall(r"\bairtime_tid\b", body)) != 9:
         return fail("airtime_tid references are duplicated or incomplete inside the target function")
 
     if not re.search(
