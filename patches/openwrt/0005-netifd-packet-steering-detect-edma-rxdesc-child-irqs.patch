@@ -36,7 +36,7 @@ diff --git a/package/network/config/netifd/files/usr/libexec/network/packet-stee
  	if (!spec || length(spec) % 12)
  		return [];
  
-+	let parent;
+ 	let parent;
 @@ -292,6 +302,10 @@ function dev_irqs(path)
  	for (let off = 0; off < length(spec); off += 12) {
 +		// RXDESC rings handle receive work; RXFILL and TXCMPL do not.
