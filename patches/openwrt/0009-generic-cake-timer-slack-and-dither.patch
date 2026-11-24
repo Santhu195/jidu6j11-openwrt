@@ -71,7 +71,7 @@ new file mode 100644
 + 	} else if (!sch->q.qlen) {
 + 		int i;
 + 
-+@@ -2611,6 +2615,17 @@ static void cake_configure_rates(struct
++@@ -2611,6 +2615,16 @@ static void cake_configure_rates(struct
 + 
 + 	qd->rate_ns   = qd->tins[ft].tin_rate_ns;
 + 	qd->rate_shft = qd->tins[ft].tin_rate_shft;
