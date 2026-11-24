@@ -1,0 +1,107 @@
+name: OpenWrt source preflight (no image build)
+
+on:
+  push:
+    branches:
+      - integrate/latest-main-five-patches
+    paths:
+      - "patches/**"
+      - "scripts/**"
+      - ".github/workflows/preflight.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  OPENWRT_REPO: https://github.com/openwrt/openwrt.git
+  OPENWRT_BRANCH: main
+  PR_NUMBER: "26498"
+  IWINFO_PRS: "51"
+  PACKAGES_COMMIT: "074500b953d27131881f6cb2f37edbb86be985ba"
+  TARGET: qualcommbe
+  SUBTARGET: ipq95xx
+  EXPECTED_DEVICES: "6"
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout integration branch
+        uses: actions/checkout@v4
+
+      - name: Install source-preparation dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential clang flex bison g++ gawk gettext git \
+            libncurses-dev libssl-dev python3-setuptools python3-pyelftools rsync swig \
+            unzip zlib1g-dev file wget libelf-dev ccache tree
+
+      - name: Set up Node.js for the existing UnTangled preparation step
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Pin current OpenWrt main
+        id: upstream
+        run: |
+          sha=$(git ls-remote "$OPENWRT_REPO" "refs/heads/$OPENWRT_BRANCH" | cut -f1)
+          if [ -z "$sha" ]; then
+            echo "::error::Could not resolve OpenWrt main"
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Preflight OpenWrt SHA: $sha"
+
+      - name: Prepare OpenWrt tree and Kconfig
+        env:
+          OPENWRT_COMMIT: ${{ steps.upstream.outputs.sha }}
+        run: bash scripts/prepare.sh
+
+      - name: Download source archives (no compilation)
+        working-directory: openwrt
+        run: make download -j8
+
+      - name: Prepare mac80211/backports and verify every ath11k patch
+        working-directory: openwrt
+        run: |
+          make package/kernel/mac80211/prepare V=s
+          src=$(find build_dir/target-* -type d -path '*/mac80211-regular/backports-7.2' -print -quit)
+          if [ -z "$src" ]; then
+            echo "::error::Prepared mac80211 backports source directory was not found"
+            exit 1
+          fi
+          bash ../scripts/verify-ath11k-patches.sh "$src"
+
+      - name: Prepare target kernel and run source checks (no kernel build)
+        working-directory: openwrt
+        run: |
+          make target/linux/prepare V=s
+
+          edma_tx=$(find build_dir/target-* -type f \
+            -path '*/drivers/net/ethernet/qualcomm/ppe/edma_tx.c' -print -quit)
+          if [ -z "$edma_tx" ]; then
+            echo "::error::Prepared Qualcomm EDMA TX source was not found"
+            exit 1
+          fi
+          edma=$(find build_dir/target-* -type f \
+            -path '*/drivers/net/ethernet/qualcomm/ppe/edma.c' -print -quit)
+          cake_src=$(find build_dir/target-* -type f \
+            -path '*/net/sched/sch_cake.c' -print -quit)
+          if [ -z "$edma" ] || [ -z "$cake_src" ]; then
+            echo "::error::Prepared EDMA or CAKE source was not found"
+            exit 1
+          fi
+
+          bash ../scripts/verify-edma-tx-queue-wake.sh "$edma_tx"
+          bash ../scripts/verify-edma-rx-irq-affinity.sh "$edma"
+          bash ../scripts/verify-edma-napi.sh "$(dirname "$edma")"
+          bash ../scripts/verify-cake-patches.sh "$cake_src"
+          bash ../scripts/verify-netifd-packet-steering.sh \
+            package/network/config/netifd/files/usr/libexec/network/packet-steering.uc \
+            package/network/config/netifd/files/etc/hotplug.d/net/20-packet-steering \
+            package/network/config/netifd/Makefile
+
+          grep -Fq 'PKG_RELEASE:=21' package/kernel/mac80211/Makefile
+          echo "::notice::All source preflight checks passed. No firmware or kernel compilation was run."
