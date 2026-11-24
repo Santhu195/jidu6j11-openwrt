@@ -119,9 +119,7 @@ jobs:
       - name: Install preflight dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential clang flex bison g++ gawk gettext git \\
-            libncurses-dev libssl-dev python3-setuptools python3-pyelftools rsync swig \\
-            unzip zlib1g-dev file wget libelf-dev ccache tree
+          sudo apt-get install -y build-essential clang flex bison g++ gawk gettext git libncurses-dev libssl-dev python3-setuptools python3-pyelftools rsync swig unzip zlib1g-dev file wget libelf-dev ccache tree
 
       - name: Set up Node.js for UnTangled build
         uses: actions/setup-node@v4
