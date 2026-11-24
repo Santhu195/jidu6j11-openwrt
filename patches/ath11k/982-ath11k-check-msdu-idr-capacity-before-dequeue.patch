@@ -17,10 +17,10 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 ---
  drivers/net/wireless/ath/ath11k/dp.c    |  1 +
  drivers/net/wireless/ath/ath11k/dp.h    |  6 +++++-
- drivers/net/wireless/ath/ath11k/dp_tx.c | 43 +++++++++++++++++++++++++++++++++++++++------
+ drivers/net/wireless/ath/ath11k/dp_tx.c | 55 +++++++++++++++++++++++++++++++++++++++++++++++-------
  drivers/net/wireless/ath/ath11k/dp_tx.h |  1 +
  drivers/net/wireless/ath/ath11k/mac.c   |  7 ++++---
- 5 files changed, 48 insertions(+), 10 deletions(-)
+ 5 files changed, 60 insertions(+), 10 deletions(-)
 
 --- a/drivers/net/wireless/ath/ath11k/dp.c
 +++ b/drivers/net/wireless/ath/ath11k/dp.c
@@ -51,7 +51,7 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 
 --- a/drivers/net/wireless/ath/ath11k/dp_tx.c
 +++ b/drivers/net/wireless/ath/ath11k/dp_tx.c
-@@ -81,2 +81,31 @@ int ath11k_dp_tx(struct ath11k *ar, struct ath11k_vif *arvif,
+@@ -81,2 +81,43 @@ int ath11k_dp_tx(struct ath11k *ar, struct ath11k_vif *arvif,
  
 -int ath11k_dp_tx(struct ath11k *ar, struct ath11k_vif *arvif,
 +/* The caller holds tx_ring->tx_idr_lock. */
@@ -68,23 +68,35 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 +}
 +
 +/**
-+ * ath11k_dp_tx_idr_has_room() - tell whether ath11k_dp_tx() can take a frame
-+ * @tx_ring: the ring the frame would go to first
++ * ath11k_dp_tx_idr_has_room() - check MSDU ID capacity before dequeue
++ * @ar: ath11k device
++ * @ring_selector: initial TCL ring selector for this access category
 + *
-+ * ath11k_dp_tx() allocates the frame's MSDU id from the ring's idr, which
-+ * holds DP_TX_IDR_SIZE - 1 ids and frees one when the frame completes. A
-+ * caller that takes a frame from mac80211 only to have it refused for a full
-+ * idr loses the frame, so it checks first.
++ * ath11k_dp_tx() may retry subsequent TCL rings when tcl_ring_retry is
++ * enabled. Check every ring it can try, not just the initial ring.
 + *
-+ * Return: true if the idr has an id free.
++ * Return: true if at least one eligible ring has an MSDU ID free.
 + */
-+bool ath11k_dp_tx_idr_has_room(struct dp_tx_ring *tx_ring)
++bool ath11k_dp_tx_idr_has_room(struct ath11k *ar, u32 ring_selector)
 +{
-+	return atomic_read(&tx_ring->num_txbuf) < DP_TX_IDR_SIZE - 1;
++	struct ath11k_base *ab = ar->ab;
++	struct dp_tx_ring *tx_ring;
++	u32 num_tx_rings = ab->hw_params.hal_params->num_tx_rings;
++	u32 i;
++
++	for (i = 0; i < num_tx_rings; i++) {
++		tx_ring = &ab->dp.tx_ring[(ring_selector + i) % num_tx_rings];
++		if (atomic_read(&tx_ring->num_txbuf) < DP_TX_IDR_SIZE - 1)
++			return true;
++		if (!ab->hw_params.tcl_ring_retry)
++			break;
++	}
++
++	return false;
 +}
 +
 +int ath11k_dp_tx(struct ath11k *ar, struct ath11k_vif *arvif,
-@@ -123,4 +152,6 @@ int ath11k_dp_tx(struct ath11k *ar, struct ath11k_vif *arvif,
+@@ -123,4 +164,6 @@ int ath11k_dp_tx(struct ath11k *ar, struct ath11k_vif *arvif,
  	spin_lock_bh(&tx_ring->tx_idr_lock);
  	ret = idr_alloc(&tx_ring->txbuf_idr, skb, 0,
  			DP_TX_IDR_SIZE - 1, GFP_ATOMIC);
@@ -92,7 +104,7 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 +		atomic_inc(&tx_ring->num_txbuf);
  	spin_unlock_bh(&tx_ring->tx_idr_lock);
 
-@@ -276,4 +307,4 @@ fail_remove_idr:
+@@ -276,4 +319,4 @@ fail_remove_idr:
  	spin_lock_bh(&tx_ring->tx_idr_lock);
 -	idr_remove(&tx_ring->txbuf_idr,
 -		   FIELD_GET(DP_TX_DESC_ID_MSDU_ID, ti.desc_id));
@@ -100,25 +112,25 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 +				FIELD_GET(DP_TX_DESC_ID_MSDU_ID, ti.desc_id));
  	spin_unlock_bh(&tx_ring->tx_idr_lock);
 
-@@ -295,3 +326,3 @@ static void ath11k_dp_tx_free_txbuf(struct ath11k_base *ab, u8 mac_id,
+@@ -295,3 +338,3 @@ static void ath11k_dp_tx_free_txbuf(struct ath11k_base *ab, u8 mac_id,
  	spin_lock(&tx_ring->tx_idr_lock);
 -	msdu = idr_remove(&tx_ring->txbuf_idr, msdu_id);
 +	msdu = ath11k_dp_tx_idr_remove(tx_ring, msdu_id);
  	spin_unlock(&tx_ring->tx_idr_lock);
 
-@@ -338,3 +369,3 @@ void ath11k_dp_tx_free_pending(struct ath11k_base *ab)
+@@ -338,3 +381,3 @@ void ath11k_dp_tx_free_pending(struct ath11k_base *ab)
  	idr_for_each_entry(&tx_ring->txbuf_idr, msdu, msdu_id) {
 -		idr_remove(&tx_ring->txbuf_idr, msdu_id);
 +		ath11k_dp_tx_idr_remove(tx_ring, msdu_id);
  		__skb_queue_tail(&pending, msdu);
 
-@@ -366,3 +397,3 @@ static void ath11k_dp_tx_htt_tx_complete_buf(struct ath11k_base *ab,
+@@ -366,3 +409,3 @@ static void ath11k_dp_tx_htt_tx_complete_buf(struct ath11k_base *ab,
  	spin_lock(&tx_ring->tx_idr_lock);
 -	msdu = idr_remove(&tx_ring->txbuf_idr, ts->msdu_id);
 +	msdu = ath11k_dp_tx_idr_remove(tx_ring, ts->msdu_id);
  	spin_unlock(&tx_ring->tx_idr_lock);
 
-@@ -795,3 +826,3 @@ int ath11k_dp_tx_completion_handler(struct ath11k_base *ab, int ring_id,
+@@ -795,3 +838,3 @@ int ath11k_dp_tx_completion_handler(struct ath11k_base *ab, int ring_id,
  		spin_lock(&tx_ring->tx_idr_lock);
 -		msdu = idr_remove(&tx_ring->txbuf_idr, msdu_id);
 +		msdu = ath11k_dp_tx_idr_remove(tx_ring, msdu_id);
@@ -128,7 +140,7 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 +++ b/drivers/net/wireless/ath/ath11k/dp_tx.h
 @@ -23,3 +23,4 @@ int ath11k_dp_tx(struct ath11k *ar, struct ath11k_vif *arvif,
  		 struct ath11k_sta *arsta, struct sk_buff *skb);
-+bool ath11k_dp_tx_idr_has_room(struct dp_tx_ring *tx_ring);
++bool ath11k_dp_tx_idr_has_room(struct ath11k *ar, u32 ring_selector);
  int ath11k_dp_tx_completion_handler(struct ath11k_base *ab, int ring_id,
  				    int budget);
 
@@ -146,7 +158,7 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 
 @@ -10149,4 +10149,4 @@ static int ath11k_mac_tx_push_txq(struct ath11k *ar, struct ieee80211_txq *txq)
 -		if (num_free == 0) {
-+		if (num_free == 0 || !ath11k_dp_tx_idr_has_room(tx_ring)) {
++		if (num_free == 0 || !ath11k_dp_tx_idr_has_room(ar, ring_selector)) {
  			spin_unlock_bh(&tx_ring->wake_tx_lock);
  			if (ath11k_mac_mark_txq_starved(ar, txq->ac))
  				return -ENOSPC;
