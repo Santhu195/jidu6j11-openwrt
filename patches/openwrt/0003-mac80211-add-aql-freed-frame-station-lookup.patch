@@ -15,7 +15,7 @@ diff --git a/package/kernel/mac80211/patches/subsys/514-wifi-mac80211-find-the-s
 new file mode 100644
 --- /dev/null
 +++ b/package/kernel/mac80211/patches/subsys/514-wifi-mac80211-find-the-station-of-a-freed-802.3-frame-for-AQL.patch
-@@ -0,0 +1,53 @@
+@@ -0,0 +1,52 @@
 +From: Julius Bairaktaris <julius@bairaktaris.de>
 +Date: Sat, 24 Oct 2026 12:35:18 +0200
 +Subject: [PATCH wireless-next] wifi: mac80211: find the station of a freed
