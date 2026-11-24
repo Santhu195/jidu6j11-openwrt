@@ -172,10 +172,26 @@ jobs:
           exit 1
         fi
 
-        # Verify the patched driver source before the expensive firmware build.
+        # Verify the patched driver source and its mac80211 scheduling dependency.
         bash ../scripts/verify-ath11k-patches.sh "$src"
 
-        echo "::notice::Pre-build validation passed; no compilation performed"
+        # Verify that netifd discovers the EDMA ethernet-dma child and steers
+        # only RX descriptor IRQs (not TX completion or RX fill IRQs).
+        bash ../scripts/verify-netifd-packet-steering.sh \
+          package/network/config/netifd/files/usr/libexec/network/packet-steering.uc
+
+        # Apply the target kernel patch series without compiling the kernel,
+        # then verify the EDMA completion-ring queue-wakeup fix is present.
+        make target/linux/prepare V=s
+        edma_tx=$(find build_dir/target-* -type f \
+          -path '*/drivers/net/ethernet/qualcomm/ppe/edma_tx.c' -print -quit)
+        if [ -z "$edma_tx" ]; then
+          echo "::error::Prepared Qualcomm EDMA TX source was not found"
+          exit 1
+        fi
+        bash ../scripts/verify-edma-tx-queue-wake.sh "$edma_tx"
+
+        echo "::notice::Pre-build patch validation passed; no compilation performed"
 
     - name: Build
       working-directory: openwrt

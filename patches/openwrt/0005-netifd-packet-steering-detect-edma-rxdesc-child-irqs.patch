@@ -1,0 +1,44 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: JIDU6J11 OpenWrt maintainers <noreply@example.com>
+Date: Wed, 25 Nov 2026 00:00:00 +0000
+Subject: [PATCH] netifd: detect EDMA RX descriptor IRQs on the DMA child node
+
+The Qualcomm PPE platform device has no interrupts property of its own.
+Its ethernet-dma child declares the EDMA interrupts and their names.
+Discover that child when the parent has no interrupts property, resolve
+the inherited interrupt-parent as usual, and include only rxdesc_* IRQs
+in receive CPU affinity detection.
+
+This lets packet steering recognise the four EDMA RX descriptor rings
+already spread over CPU0-CPU3. It avoids adding an unnecessary RPS hop
+back to a single CPU for Ethernet RX queues.
+
+---
+ package/network/config/netifd/files/usr/libexec/network/packet-steering.uc | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
+
+diff --git a/package/network/config/netifd/files/usr/libexec/network/packet-steering.uc b/package/network/config/netifd/files/usr/libexec/network/packet-steering.uc
+--- a/package/network/config/netifd/files/usr/libexec/network/packet-steering.uc
++++ b/package/network/config/netifd/files/usr/libexec/network/packet-steering.uc
+@@ -277,6 +277,15 @@ function dev_irqs(path)
+ 	let node = realpath(`${path}/of_node`);
+ 	let spec = node ? readfile(`${node}/interrupts`) : null;
++	let irq_names;
++	let edma_child = false;
++
++	// On Qualcomm PPE, the IRQs belong to the ethernet-dma child node.
++	if (!spec && node) {
++		node = `${node}/ethernet-dma`;
++		spec = readfile(`${node}/interrupts`);
++		irq_names = split(readfile(`${node}/interrupt-names`) ?? "", "\0");
++		edma_child = true;
++	}
+ 	if (!spec || length(spec) % 12)
+ 		return [];
+@@ -292,6 +301,9 @@ function dev_irqs(path)
+ 	for (let off = 0; off < length(spec); off += 12) {
++		// RXDESC rings handle receive work; RXFILL and TXCMPL do not.
++		if (edma_child && !match(irq_names[off / 12] ?? "", /^rxdesc_/))
++			continue;
++
+ 		// SPIs start at hwirq 32, PPIs at 16

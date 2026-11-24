@@ -30,12 +30,23 @@ DPRX="$SRC/drivers/net/wireless/ath/ath11k/dp_rx.c"
 CORE="$SRC/drivers/net/wireless/ath/ath11k/core.c"
 MAC="$SRC/drivers/net/wireless/ath/ath11k/mac.c"
 MACH="$SRC/drivers/net/wireless/ath/ath11k/mac.h"
+MAC_TX="$SRC/net/mac80211/tx.c"
+MAC_IH="$SRC/net/mac80211/ieee80211_i.h"
+MAC_STATUS="$SRC/net/mac80211/status.c"
 PCIC="$SRC/drivers/net/wireless/ath/ath11k/pcic.c"
 AHB="$SRC/drivers/net/wireless/ath/ath11k/ahb.c"
 
-for file in "$DP" "$DPH" "$DPTX" "$DPTXH" "$DPRX" "$CORE" "$MAC" "$MACH" "$PCIC" "$AHB"; do
+for file in "$DP" "$DPH" "$DPTX" "$DPTXH" "$DPRX" "$CORE" "$MAC" "$MACH" "$MAC_TX" "$MAC_IH" "$MAC_STATUS" "$PCIC" "$AHB"; do
   [ -s "$file" ] || { echo "::error::Ath11k preflight: missing patched source $file"; exit 1; }
 done
+
+# The ath11k scheduler depends on the mac80211 TXQ scheduling-round fix
+# carried by current OpenWrt main as subsystem patch 015.
+require_text "$MAC_TX" "local->schedule_open[ac]" "mac80211 TXQ scheduling-round open flag"
+require_text "$MAC_IH" "bool schedule_open[IEEE80211_NUM_ACS];" "mac80211 TXQ scheduling-round state"
+
+# Encapsulation-offload frames need the mac80211 AQL station lookup fix.
+require_text "$MAC_STATUS" "ieee80211_lookup_ra_sta(sdata, skb, &sta, false)" "AQL station lookup for freed 802.3 frames"
 
 # Airtime queue limits and per-station TX/RX airtime accounting.
 require_text "$MAC" "NL80211_EXT_FEATURE_AQL" "AQL feature advertisement"
