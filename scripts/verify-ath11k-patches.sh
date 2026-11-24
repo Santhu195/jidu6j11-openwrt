@@ -54,6 +54,7 @@ require_text "$MAC" "NL80211_EXT_FEATURE_AIRTIME_FAIRNESS" "airtime-fairness fea
 require_text "$MAC" "ath11k_mac_schedule_txq" "driver TXQ scheduler"
 require_text "$MAC" ".wake_tx_queue" "custom wake_tx_queue operation"
 require_text "$DPRX" "ieee80211_sta_register_airtime(sta, airtime_tid, tx_duration, 0);" "TX airtime accounting call"
+require_text "$DPRX" "max_t(u8, common->num_users, 1)" "per-user airtime division for OFDMA/MU-MIMO"
 require_count "$DPRX" "u8 airtime_tid;" 1 "airtime_tid declaration"
 require_count "$DPRX" "ieee80211_sta_register_airtime(sta, airtime_tid, tx_duration, 0);" 1 "TX airtime accounting call"
 require_text "$DPRX" "ieee80211_sta_register_airtime(peer->sta, tid, 0," "RX airtime accounting call"
