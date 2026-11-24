@@ -179,7 +179,12 @@ jobs:
 
     - name: Build
       working-directory: openwrt
-      run: make -j"$(($(nproc) + 1))" || make -j1 V=s
+      env:
+        BUILD_TIME_LOG: build-time.log
+      run: |
+        echo "Compiler cache before build:"
+        staging_dir/host/bin/ccache -s
+        make -j"$(($(nproc) + 1))
 
     - name: Save caches
       if: always()
@@ -216,7 +221,18 @@ jobs:
         ls -lh bin/targets/$TARGET/$SUBTARGET/*sysupgrade* bin/targets/$TARGET/$SUBTARGET/*initramfs* 2>/dev/null | awk '{print $5, $9}' || true
         echo ""
         echo "Selected packages: $(grep '^CONFIG_PACKAGE_.*=y' .config | wc -l)"
-        staging_dir/host/bin/ccache -vv --show-stats || true
+        if [ -x staging_dir/host/bin/ccache ]; then
+          staging_dir/host/bin/ccache -s
+        else
+          echo "::error::OpenWrt ccache binary missing; compiler caching was not built"
+        fi
+        if [ -s build-time.log ]; then
+          echo ""
+          echo "Build-time report (top 30 packages):"
+          perl scripts/build-time-report.pl -n 30 build-time.log || true
+        else
+          echo "No OpenWrt build-time log was produced"
+        fi
         cat feeds.conf
 
     - name: Collect artifacts
