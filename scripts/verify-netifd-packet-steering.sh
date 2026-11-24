@@ -18,8 +18,8 @@ require_text() {
 }
 
 # Keep PCI MSI discovery and the Qualcomm PPE ethernet-dma child fallback.
-require_text "$SCRIPT" 'glob(\`${path}/msi_irqs/*\`)' "existing PCI MSI IRQ discovery"
-require_text "$SCRIPT" 'node = \`${node}/ethernet-dma\`;' "EDMA child-node discovery"
+require_text "$SCRIPT" 'glob(`${path}/msi_irqs/*`)' "existing PCI MSI IRQ discovery"
+require_text "$SCRIPT" 'node = `${node}/ethernet-dma`;' "EDMA child-node discovery"
 require_text "$SCRIPT" 'interrupt-names' "EDMA interrupt-name parsing"
 require_text "$SCRIPT" 'match(irq_names[off / 12] ?? "", /^rxdesc_/)' "RX descriptor-only IRQ selection"
 require_text "$SCRIPT" 'effective_affinity_list' "effective IRQ affinity lookup"
