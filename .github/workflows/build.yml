@@ -137,10 +137,11 @@ jobs:
           src=$(find build_dir/target-* -type d -path '*/mac80211-regular/backports-7.2' -print -quit)
           test -n "$src"
           bash ../scripts/verify-ath11k-patches.sh "$src"
+          make package/kernel/mac80211/compile -j2 V=s
 
   build:
-    needs: check
-    if: github.event_name != 'push' && needs.check.outputs.build == 'true'
+    needs: [check, preflight]
+    if: ${{ always() && needs.check.outputs.build == 'true' && (github.event_name != 'push' || needs.preflight.result == 'success') }}
     runs-on: ubuntu-latest
     timeout-minutes: 350
 
