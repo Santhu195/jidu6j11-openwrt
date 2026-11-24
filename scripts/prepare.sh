@@ -240,7 +240,7 @@ iwinfo = iwinfo_makefile.read_text()
 wifi_scripts = wifi_scripts_makefile.read_text()
 
 match = re.search(
-    r"(?ms)^ifdef CONFIG_WIFI_SCRIPTS_UCODE\\s*\\n(.*?)^else\\s*\\n(.*?)^endif\\s*$",
+    r"(?ms)^ifdef CONFIG_WIFI_SCRIPTS_UCODE\s*\n(.*?)^else\s*\n(.*?)^endif\s*$",
     iwinfo,
 )
 if not match:
@@ -248,7 +248,7 @@ if not match:
 
 ucode_branch, legacy_branch = match.groups()
 if not re.search(
-    r"(?ms)^\\s*define Package/iwinfo/install\\s*\\n\\s*:\\s*\\n\\s*endef\\s*$",
+    r"(?ms)^\s*define Package/iwinfo/install\s*\n\s*:\s*\n\s*endef\s*$",
     ucode_branch,
 ):
     raise SystemExit("::error::iwinfo UCODE install branch must remain a no-op; duplicate /usr/bin/iwinfo risk")
@@ -260,7 +260,7 @@ if not ucode_command.is_file() or not os.access(ucode_command, os.X_OK):
     raise SystemExit("::error::wifi-scripts UCODE /usr/bin/iwinfo command is missing or not executable")
 
 if not re.search(
-    r"(?ms)ifeq \\(\\$\\(CONFIG_WIFI_SCRIPTS_UCODE\\),y\\).*?\\$\\(CP\\) ./files-ucode/\\* \\(1\\)/",
+    r"(?ms)ifeq \(\$\(CONFIG_WIFI_SCRIPTS_UCODE\),y\).*?\$\(CP\) ./files-ucode/\* \(1\)/",
     wifi_scripts,
 ):
     raise SystemExit("::error::wifi-scripts no longer installs its UCODE command tree when UCODE mode is enabled")
