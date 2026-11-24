@@ -142,7 +142,11 @@ jobs:
           cache/npm
         key: openwrt-cache-v2-${{ runner.os }}-${{ env.TARGET }}-${{ env.SUBTARGET }}-${{ hashFiles('config/base.diffconfig', 'config/extra-packages.txt', 'patches/**', 'bdf/**', 'feeds.conf.default.d/**') }}-${{ github.run_id }}
         restore-keys: |
+          # Prefer the same build configuration, then reuse downloads and
+          # compiler objects from the latest compatible target cache. ccache
+          # validates compiler identity before reusing any object.
           openwrt-cache-v2-${{ runner.os }}-${{ env.TARGET }}-${{ env.SUBTARGET }}-${{ hashFiles('config/base.diffconfig', 'config/extra-packages.txt', 'patches/**', 'bdf/**', 'feeds.conf.default.d/**') }}-
+          openwrt-cache-v2-${{ runner.os }}-${{ env.TARGET }}-${{ env.SUBTARGET }}-
           build-cache-
 
     - name: Set up Node.js for UnTangled build
@@ -256,7 +260,7 @@ jobs:
         echo ""
         echo "Selected packages: $(grep '^CONFIG_PACKAGE_.*=y' .config | wc -l)"
         if [ -x staging_dir/host/bin/ccache ]; then
-          staging_dir/host/bin/ccache -s
+          CCACHE_DIR="$PWD/.ccache" staging_dir/host/bin/ccache -s
         else
           echo "::error::OpenWrt ccache binary missing; compiler caching was not built"
         fi
