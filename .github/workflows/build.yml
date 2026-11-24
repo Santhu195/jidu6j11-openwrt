@@ -113,76 +113,9 @@ jobs:
           echo "hash=$hash" >> "$GITHUB_OUTPUT"
           echo "openwrt_sha=$up" >> "$GITHUB_OUTPUT"
 
-  preflight:
-    needs: check
-    # Every image build trigger must pass the same preflight first.
-    if: needs.check.outputs.build == 'true'
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Install preflight dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y build-essential clang flex bison g++ gawk gettext git libncurses-dev libssl-dev python3-setuptools python3-pyelftools rsync swig unzip zlib1g-dev file wget libelf-dev ccache tree
-
-      - name: Set up Node.js for UnTangled build
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Restore preflight caches
-        uses: actions/cache/restore@v4
-        with:
-          path: |
-            cache/dl
-            cache/ccache
-          key: preflight-cache-${{ github.run_id }}
-          restore-keys: |
-            build-cache-
-            preflight-cache-
-
-      - name: Prepare tree
-        env:
-          OPENWRT_COMMIT: ${{ needs.check.outputs.openwrt_sha }}
-        run: bash scripts/prepare.sh
-
-      - name: Validate kernel and ath11k sources (no compilation)
-        working-directory: openwrt
-        run: |
-          # Download and unpack only the mac80211/backports source so the
-          # custom ath11k patch series is actually applied and can be inspected.
-          make package/kernel/mac80211/download
-          make package/kernel/mac80211/prepare V=s
-
-          src=$(find build_dir/target-* -type d -path '*/mac80211-regular/backports-7.2' -print -quit)
-          if [ -z "$src" ]; then
-            echo "::error::Prepared mac80211 backports source directory was not found"
-            exit 1
-          fi
-
-          # Verify the patched driver source and required changes without
-          # building host tools, the toolchain, the kernel, or driver modules.
-          bash ../scripts/verify-ath11k-patches.sh "$src"
-
-          # scripts/prepare.sh already ran make defconfig and validates all
-          # six device profiles, required packages, DTS/BDF and dependencies.
-          echo "::notice::Preflight passed: source preparation, Ath11k patch checks and six-profile configuration validated; no compilation performed"
-      - name: Save preflight caches
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: |
-            cache/dl
-            cache/ccache
-          key: preflight-cache-${{ github.run_id }}
-
   build:
-    needs: [check, preflight]
-    if: ${{ always() && needs.check.outputs.build == 'true' && needs.preflight.result == 'success' }}
+    needs: check
+    if: needs.check.outputs.build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 350
 
@@ -211,9 +144,7 @@ jobs:
           cache/ccache
         key: build-cache-${{ github.run_id }}
         restore-keys: |
-          preflight-cache-${{ github.run_id }}
           build-cache-
-          preflight-cache-
 
     - name: Set up Node.js for UnTangled build
       uses: actions/setup-node@v4
@@ -228,6 +159,24 @@ jobs:
     - name: Download sources
       working-directory: openwrt
       run: make download -j8
+
+    - name: Validate kernel and ath11k sources (no compilation)
+      working-directory: openwrt
+      run: |
+        # Source downloads have already completed above; prepare applies the
+        # backports patch series without compiling kernel or driver objects.
+        make package/kernel/mac80211/prepare V=s
+
+        src=$(find build_dir/target-* -type d -path '*/mac80211-regular/backports-7.2' -print -quit)
+        if [ -z "$src" ]; then
+          echo "::error::Prepared mac80211 backports source directory was not found"
+          exit 1
+        fi
+
+        # Verify the patched driver source before the expensive firmware build.
+        bash ../scripts/verify-ath11k-patches.sh "$src"
+
+        echo "::notice::Pre-build validation passed; no compilation performed"
 
     - name: Build
       working-directory: openwrt
