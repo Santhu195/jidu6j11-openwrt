@@ -111,7 +111,7 @@ jobs:
     # Every image build trigger must pass the same preflight first.
     if: needs.check.outputs.build == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
 
     steps:
       - name: Checkout Code
@@ -130,7 +130,7 @@ jobs:
       - name: Prepare tree
         run: bash scripts/prepare.sh
 
-      - name: Prepare and verify ath11k patches (no full build)
+      - name: Prepare and compile kernel and ath11k sources
         working-directory: openwrt
         run: |
           make package/kernel/mac80211/download
@@ -140,7 +140,14 @@ jobs:
           bash ../scripts/verify-ath11k-patches.sh "$src"
           make tools/install -j2
           make toolchain/install -j2
-          make target/linux/prepare
+
+          # Kernel-module packages require the generated Linux .config.
+          # target/linux/prepare only unpacks and patches the kernel source.
+          make target/linux/compile -j2 V=s
+          kernel_config=$(find build_dir/target-* -type f -path '*/linux-*/.config' -print -quit)
+          test -n "$kernel_config"
+
+          # Compile the patched backports/mac80211 modules against that kernel.
           make package/kernel/mac80211/compile -j2 V=s
 
   build:
