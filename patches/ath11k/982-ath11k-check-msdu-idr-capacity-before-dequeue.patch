@@ -118,7 +118,7 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 +	msdu = ath11k_dp_tx_idr_remove(tx_ring, ts->msdu_id);
  	spin_unlock(&tx_ring->tx_idr_lock);
 
-@@ -795,3 +826,3 @@ void ath11k_dp_tx_completion_handler(struct ath11k_base *ab, int ring_id)
+@@ -795,3 +826,3 @@ int ath11k_dp_tx_completion_handler(struct ath11k_base *ab, int ring_id,
  		spin_lock(&tx_ring->tx_idr_lock);
 -		msdu = idr_remove(&tx_ring->txbuf_idr, msdu_id);
 +		msdu = ath11k_dp_tx_idr_remove(tx_ring, msdu_id);
@@ -126,10 +126,11 @@ This is the IDR-capacity part of the ath11k airtime/TXQ v6 series.
 
 --- a/drivers/net/wireless/ath/ath11k/dp_tx.h
 +++ b/drivers/net/wireless/ath/ath11k/dp_tx.h
-@@ -23,2 +23,3 @@ int ath11k_dp_tx(struct ath11k *ar, struct ath11k_vif *arvif,
+@@ -23,3 +23,4 @@ int ath11k_dp_tx(struct ath11k *ar, struct ath11k_vif *arvif,
  		 struct ath11k_sta *arsta, struct sk_buff *skb);
 +bool ath11k_dp_tx_idr_has_room(struct dp_tx_ring *tx_ring);
- void ath11k_dp_tx_completion_handler(struct ath11k_base *ab, int ring_id);
+ int ath11k_dp_tx_completion_handler(struct ath11k_base *ab, int ring_id,
+ 				    int budget);
 
 --- a/drivers/net/wireless/ath/ath11k/mac.c
 +++ b/drivers/net/wireless/ath/ath11k/mac.c
