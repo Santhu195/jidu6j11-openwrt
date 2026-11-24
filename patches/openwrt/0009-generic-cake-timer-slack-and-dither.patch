@@ -126,7 +126,7 @@ new file mode 100644
 + 
 + 	struct cobalt_params cparams;
 + 	u32	drop_overlimit;
-+@@ -729,17 +731,18 @@ static u16 cake_get_flow_quantum(struct
++@@ -729,19 +731,20 @@ static u16 cake_get_flow_quantum(struct
 + 				 struct cake_flow *flow,
 + 				 int flow_mode)
 + {
