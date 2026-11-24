@@ -108,7 +108,8 @@ jobs:
 
   preflight:
     needs: check
-    if: github.event_name == 'push' && needs.check.outputs.build == 'true'
+    # Every image build trigger must pass the same preflight first.
+    if: needs.check.outputs.build == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 90
 
@@ -144,7 +145,7 @@ jobs:
 
   build:
     needs: [check, preflight]
-    if: ${{ always() && needs.check.outputs.build == 'true' && (github.event_name != 'push' || needs.preflight.result == 'success') }}
+    if: ${{ always() && needs.check.outputs.build == 'true' && needs.preflight.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 350
 
