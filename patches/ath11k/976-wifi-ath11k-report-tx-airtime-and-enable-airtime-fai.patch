@@ -34,7 +34,7 @@ Signed-off-by: Julius Bairaktaris <julius@bairaktaris.de>
  
  	if (!(usr_stats->tlv_flags & BIT(HTT_PPDU_STATS_TAG_USR_RATE)))
 @@ -1398,4 +1398,8 @@ ath11k_update_per_peer_tx_stats(struct ath11k *ar,
- 	if (common->fes_duration_us)
+-	if (common->fes_duration_us)
 -		tx_duration = common->fes_duration_us;
 +	/* fes_duration_us is in the common TLV, one value for the whole PPDU
 +	 * that every user's stats repeat; a user holds its share of it.
