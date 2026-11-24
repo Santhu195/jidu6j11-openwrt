@@ -19,5 +19,11 @@ require_text 'node = `${node}/ethernet-dma`;' "EDMA child-node discovery"
 require_text 'interrupt-names' "EDMA interrupt-name parsing"
 require_text 'match(irq_names[off / 12] ?? "", /^rxdesc_/)' "RX descriptor-only IRQ selection"
 require_text 'effective_affinity_list' "effective IRQ affinity lookup"
+require_text 'let parent;' "existing inherited interrupt-parent lookup"
+parent_count="$(grep -Fc 'let parent;' "$SCRIPT" || true)"
+if [ "$parent_count" -ne 1 ]; then
+  echo "::error::netifd preflight: expected exactly one parent declaration, found $parent_count"
+  exit 1
+fi
 
 echo "::notice::netifd preflight passed: EDMA child RXDESC IRQ discovery is present"
