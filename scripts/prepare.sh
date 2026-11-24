@@ -89,7 +89,7 @@ for n in $IWINFO_PRS; do
 done
 echo "::endgroup::"
 
-mkdir -p "$ROOT/cache/dl" "$ROOT/cache/ccache"
+mkdir -p "$ROOT/cache/dl" "$ROOT/cache/ccache" "$ROOT/cache/npm"
 ln -sfn "$ROOT/cache/dl" dl
 ln -sfn "$ROOT/cache/ccache" .ccache
 echo "max_size = 3.0G" > "$ROOT/cache/ccache/ccache.conf"
@@ -119,7 +119,7 @@ rm -rf "$UNTANGLED_DIR"
 git clone --depth 1 --branch v0.1.12 https://github.com/bidhata/untangled.git "$UNTANGLED_DIR"
 (
   cd "$UNTANGLED_DIR"
-  npm ci
+  npm ci --prefer-offline --cache "$ROOT/cache/npm"
   npm run build
 )
 mkdir -p package/untangled
