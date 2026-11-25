@@ -35,6 +35,7 @@ require_text "$PPE/edma_cfg_tx.c" 'if (!txcmpl_ring->napi_added || txcmpl_ring->
 python3 - "$PPE" <<'PY'
 from pathlib import Path
 import sys
+import re
 
 root = Path(sys.argv[1])
 def read(name):
@@ -98,8 +99,8 @@ drop_path = rx_body.find("ndev = edma_rx_get_src_dev", loop)
 # One read seeds the first skb before the loop. A second read refreshes it
 # once per iteration, immediately after the next descriptor is fetched and
 # before the unknown-source-port path can free the current skb.
-skb_reads = list(__import__("re").finditer(
-    r"next_skb\\s*=\\s*\\(struct sk_buff \\*\\)EDMA_RXDESC_OPAQUE_GET\\(next_rxdesc_pri\\);",
+skb_reads = list(re.finditer(
+    r"next_skb\s*=\s*\(struct sk_buff \*\)EDMA_RXDESC_OPAQUE_GET\(next_rxdesc_pri\);",
     rx_body,
 ))
 assert loop >= 0 and descriptor >= 0 and drop_path >= 0, "missing RX loop/descriptor/source-port path"
