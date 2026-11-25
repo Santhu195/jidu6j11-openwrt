@@ -91,12 +91,22 @@ assert "ppe_port_clock_deinit(&ppe_ports->port[i]);" in port, "failed/previous p
 assert "while (i >= 0)" not in port, "unsafe negative-index unwind loop remains"
 
 rx_body = body(read("edma_rx.c"), "static int edma_rx_reap(")
-next_desc = rx_body.find("next_rxdesc_pri = EDMA_RXDESC_PRI_DESC(rxdesc_ring, cons_idx);")
-next_skb = rx_body.find("next_skb = (struct sk_buff *)EDMA_RXDESC_OPAQUE_GET(next_rxdesc_pri);")
-drop_path = rx_body.find("ndev = edma_rx_get_src_dev")
-assert min(next_desc, next_skb, drop_path) >= 0, "missing RX descriptor/SKB/source-port path"
-assert next_desc < next_skb < drop_path, "next_skb must be saved before a drop path can free the current skb"
-assert rx_body.count("next_skb = (struct sk_buff *)EDMA_RXDESC_OPAQUE_GET(next_rxdesc_pri);") == 1, "next_skb must be read once per reap iteration"
+loop = rx_body.find("while (likely(work_to_do--))")
+descriptor = rx_body.find("next_rxdesc_pri = EDMA_RXDESC_PRI_DESC(rxdesc_ring, cons_idx);")
+drop_path = rx_body.find("ndev = edma_rx_get_src_dev", loop)
+
+# One read seeds the first skb before the loop. A second read refreshes it
+# once per iteration, immediately after the next descriptor is fetched and
+# before the unknown-source-port path can free the current skb.
+skb_reads = list(__import__("re").finditer(
+    r"next_skb\\s*=\\s*\\(struct sk_buff \\*\\)EDMA_RXDESC_OPAQUE_GET\\(next_rxdesc_pri\\);",
+    rx_body,
+))
+assert loop >= 0 and descriptor >= 0 and drop_path >= 0, "missing RX loop/descriptor/source-port path"
+assert len(skb_reads) == 2, "expected one initial next_skb seed and one per-iteration refresh"
+assert descriptor < skb_reads[0].start() < loop, "initial next_skb must seed the first reap iteration"
+loop_descriptor = rx_body.find("next_rxdesc_pri = EDMA_RXDESC_PRI_DESC(rxdesc_ring, cons_idx);", loop)
+assert loop < loop_descriptor < skb_reads[1].start() < drop_path, "per-iteration next_skb refresh must follow the next descriptor fetch and precede every drop path"
 
 print("EDMA source checks passed: safe budgets, idempotent NAPI lifecycle, safe port unwind and RX skb advancement")
 PY
