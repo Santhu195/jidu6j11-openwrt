@@ -175,6 +175,14 @@ jobs:
           exit 1
         fi
 
+        # The ath11k retry/statistics backport changes the mac80211 package
+        # revision; assert the bump before compilation so stale kmod packages
+        # cannot be produced from the patched source.
+        if ! grep -Fq 'PKG_RELEASE:=21' package/kernel/mac80211/Makefile; then
+          echo "::error::mac80211 PKG_RELEASE must be 21 for the integrated ath11k patches"
+          exit 1
+        fi
+
         # Verify the patched driver source and its mac80211 scheduling dependency.
         bash ../scripts/verify-ath11k-patches.sh "$src"
 
