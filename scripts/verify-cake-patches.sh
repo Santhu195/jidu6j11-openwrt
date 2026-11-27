@@ -30,6 +30,8 @@ require_text '#include <linux/prandom.h>' "per-tin PRNG header"
 require_text 'struct rnd_state dither;' "per-tin PRNG state"
 require_text '(u16)prandom_u32_state(&q->dither)' "per-tin quantum dithering"
 require_text 'prandom_seed_state(&b->dither, get_random_u64());' "per-tin PRNG initialization"
+require_text 'handle = q->is_shared ? TC_H_MAJ(sch->parent) : sch->handle;' "CAKE-MQ parent-handle selection for forwarded DSCP"
+require_text 'TC_H_MAJ(skb->priority) == handle &&' "corrected CAKE-MQ tin-override handle check"
 
 # Guard against accidentally integrating PPPoE-only transmit changes in this DHCP-WAN build.
 if grep -Fq 'cake_pppoe_xmit' "$CAKE"; then
