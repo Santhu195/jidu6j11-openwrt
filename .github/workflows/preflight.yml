@@ -70,6 +70,28 @@ jobs:
         working-directory: openwrt
         run: make download -j8
 
+      - name: Prepare and verify both JIDU board-data files (no compilation)
+        working-directory: openwrt
+        run: |
+          # ipq-wifi Build/Prepare copies the package's local src/ overlay
+          # into PKG_BUILD_DIR before the board package is assembled.
+          make package/firmware/ipq-wifi/prepare V=s
+
+          for bdf in \
+            board-jiorouter_ax6000-jidu6j11.ipq9574 \
+            board-jiorouter_ax6000-jidu6j11.qcn9074; do
+            staged=$(find build_dir/target-* -type f -name "$bdf" -print -quit)
+            if [ -z "$staged" ]; then
+              echo "::error::ipq-wifi prepare did not stage $bdf into PKG_BUILD_DIR"
+              exit 1
+            fi
+            if ! cmp -s "../bdf/$bdf" "$staged"; then
+              echo "::error::Staged ipq-wifi BDF differs from the repository copy: $bdf"
+              exit 1
+            fi
+            echo "Verified byte-identical staged BDF: $bdf"
+          done
+
       - name: Prepare mac80211/backports and verify every ath11k patch
         working-directory: openwrt
         run: |
