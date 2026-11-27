@@ -14,6 +14,8 @@ on:
       - "scripts/prepare.sh"
       - "patches/iwinfo/**"
       - "scripts/verify-patch-series.py"
+      - "patches/ath11k/**"
+      - "scripts/verify-ath11k-patches.sh"
   workflow_dispatch:
     inputs:
       force:
@@ -54,8 +56,54 @@ jobs:
         id: check
         env:
           GH_TOKEN: ${{ github.token }}
-          FORCE: ${{ inputs.force }}
+          FORCE: ${{ (github.event_name == 'push' && contains(github.event.head_commit.message, '[force-build]')) || inputs.force }}
         run: |
+          # The pagepool experiment may build only after source-preflight has
+          # passed for this exact commit. The build workflow is intentionally
+          # triggered by a separate marker commit; this gate prevents a race.
+          if [ "$GITHUB_REF_NAME" = "experiment/jidu6j11-remote-streaming-ath11k-pagepool" ]; then
+            echo "Waiting for source-preflight on exact SHA $GITHUB_SHA"
+            passed=false
+            for attempt in $(seq 1 240); do
+              runs=$(gh run list --workflow preflight.yml --branch "$GITHUB_REF_NAME" --commit "$GITHUB_SHA" \
+                --json databaseId,status,conclusion,headSha --limit 20)
+              run=$(jq -c 'map(select(.headSha == env.GITHUB_SHA)) | .[0] // empty' <<< "$runs")
+              if [ -n "$run" ]; then
+                status=$(jq -r '.status' <<< "$run")
+                conclusion=$(jq -r '.conclusion // ""' <<< "$run")
+                run_id=$(jq -r '.databaseId' <<< "$run")
+                echo "Preflight run $run_id status=$status conclusion=$conclusion"
+                if [ "$status" = "completed" ]; then
+                  if [ "$conclusion" != "success" ]; then
+                    echo "::error::Source-preflight $run_id did not pass ($conclusion); refusing image build"
+                    exit 1
+                  fi
+                  passed=true
+                  break
+                fi
+              fi
+              sleep 30
+            done
+            if [ "$passed" != "true" ]; then
+              echo "::error::Timed out waiting for source-preflight success on $GITHUB_SHA"
+              exit 1
+            fi
+
+            remote_sha=$(git ls-remote origin "refs/heads/$GITHUB_REF_NAME" | cut -f1)
+            if [ "$remote_sha" != "$GITHUB_SHA" ]; then
+              echo "::error::Branch head moved ($remote_sha) after preflight; refusing build of stale SHA $GITHUB_SHA"
+              exit 1
+            fi
+
+            existing=$(gh run list --workflow build.yml --branch "$GITHUB_REF_NAME" --commit "$GITHUB_SHA" \
+              --json databaseId --jq "[.[] | select(.databaseId != $GITHUB_RUN_ID)] | length")
+            if [ "$existing" -gt 0 ]; then
+              echo "::notice::A firmware build already exists for $GITHUB_SHA; skipping duplicate"
+              echo "build=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          fi
+
           up="${OPENWRT_COMMIT:-$(git ls-remote "$OPENWRT_REPO" "refs/heads/$OPENWRT_BRANCH" | cut -f1)}"
           if [ -z "$up" ]; then
             echo "::error::Could not resolve OpenWrt branch $OPENWRT_BRANCH"
