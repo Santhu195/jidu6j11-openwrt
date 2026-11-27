@@ -21,40 +21,7 @@ Serve the refill ring first in every poll of its group, whatever the
 budget, and carry the buffers a replenish could not allocate over to the
 next one.
 
-Count the times a replenish found the ring empty (its head equal to the
-hardware tail) in the soc_dp_stats debugfs file. The first is the fill at
-start.
-
 Signed-off-by: Julius Bairaktaris <julius@bairaktaris.de>
---- a/drivers/net/wireless/ath/ath11k/core.h
-+++ b/drivers/net/wireless/ath/ath11k/core.h
-@@ -923,6 +923,10 @@ struct ath11k_soc_dp_stats {
- 	u32 hal_reo_error[DP_REO_DST_RING_MAX];
- 	/* MSDUs received on each REO2SW ring */
- 	u64 rx_ring_msdu[DP_REO_DST_RING_MAX];
-+	/* Times a replenish found the refill ring empty: the hardware had
-+	 * consumed every buffer the host had given it
-+	 */
-+	u32 rx_refill_empty[MAX_RADIOS];
- 	/* TCP batches the TCL segments, their segments, and batches that
- 	 * were segmented in software instead
- 	 */
---- a/drivers/net/wireless/ath/ath11k/debugfs.c
-+++ b/drivers/net/wireless/ath/ath11k/debugfs.c
-@@ -713,6 +713,13 @@ static ssize_t ath11k_debugfs_dump_soc_d
- 			 soc_stats->rx_ring_msdu[2],
- 			 soc_stats->rx_ring_msdu[3]);
- 
-+	/* includes the fill at start */
-+	len += scnprintf(buf + len, size - len,
-+			 "\nRX refill ring found empty: %u %u %u\n",
-+			 soc_stats->rx_refill_empty[0],
-+			 soc_stats->rx_refill_empty[1],
-+			 soc_stats->rx_refill_empty[2]);
-+
- 	len += scnprintf(buf + len, size - len,
- 			 "TCP batches segmented by the TCL: %d, their segments: %d, segmented in software: %d, frames with fragments sent as scatter-gather: %d\n",
- 			 atomic_read(&soc_stats->tx_tso_batch),
 --- a/drivers/net/wireless/ath/ath11k/dp.c
 +++ b/drivers/net/wireless/ath/ath11k/dp.c
 @@ -770,17 +770,45 @@ fail_desc_bank_free:
@@ -144,17 +111,10 @@ Signed-off-by: Julius Bairaktaris <julius@bairaktaris.de>
  int ath11k_dp_rxbufs_replenish(struct ath11k_base *ab, int mac_id,
  			       struct dp_rxdma_ring *rx_ring,
  			       int req_entries,
-@@ -476,8 +477,18 @@ int ath11k_dp_rxbufs_replenish(struct at
+@@ -476,8 +477,11 @@ int ath11k_dp_rxbufs_replenish(struct at
  	ath11k_hal_srng_access_begin(ab, srng);
  
  	num_free = ath11k_hal_srng_src_num_free(ab, srng, true);
-+
-+	/* The head has caught up with the hardware's tail: it has consumed
-+	 * every buffer, and the firmware only logs that, then drops frames.
-+	 */
-+	if (num_free >= srng->ring_size / srng->entry_size - 1)
-+		ab->soc_stats.rx_refill_empty[mac_id]++;
-+
  	if (!req_entries && (num_free > (rx_ring->bufs_max * 3) / 4))
  		req_entries = num_free;
 +	else if (req_entries)

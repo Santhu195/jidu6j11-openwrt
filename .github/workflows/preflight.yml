@@ -118,9 +118,10 @@ jobs:
             echo "Verified byte-identical staged BDF: $bdf"
           done
 
-      - name: Prepare mac80211/backports and verify every ath11k patch
+      - name: Validate ath11k patch files and prepare mac80211/backports
         working-directory: openwrt
         run: |
+          python3 ../scripts/verify-patch-series.py ../patches/ath11k
           make package/kernel/mac80211/prepare V=s
           src=$(find build_dir/target-* -type d -path '*/mac80211-regular/backports-7.2' -print -quit)
           if [ -z "$src" ]; then
@@ -128,6 +129,7 @@ jobs:
             exit 1
           fi
           bash ../scripts/verify-ath11k-patches.sh "$src"
+          bash ../scripts/verify-ath11k-patch-application.sh "$src" "$PWD"
 
       - name: Prepare target kernel and run source checks (no kernel build)
         working-directory: openwrt

@@ -93,6 +93,12 @@ require_text "$DPRX" "page_pool_create(&pp_params)" "per-radio RX page-pool crea
 require_text "$DPH" "struct sk_buff **bufs;" "RX buffer lookup table"
 require_text "$DPH" "u32 *free_ids;" "RX buffer free-ID stack"
 require_text "$DPRX" "rx_ring->refill_deficit" "RX refill deficit retention"
+require_text "$DPRX" "min_t(int, req_entries + rx_ring->refill_deficit" "retry of previously unallocated RX refill buffers"
+require_text "$DPRX" "rx_ring->refill_deficit = num_remain;" "RX refill deficit update"
+if grep -Fq "ath11k_rx_refill_early" "$DPRX"; then
+  echo "::error::Ath11k preflight: obsolete intermediate refill flag survived patch 999z18"
+  exit 1
+fi
 require_text "$DP" "ath11k_dp_service_rx_refill(ab, grp_id);" "RX refill service before budgeted handlers"
 require_text "$DPRX" "ATH11K_DP_RX_REFILL_CHUNK" "batched RX refill IDs"
 require_text "$DPRX" "skb_set_hash(msdu," "hardware RX flow hash propagation"

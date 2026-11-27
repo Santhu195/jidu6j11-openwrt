@@ -21,7 +21,7 @@ def main() -> int:
     for path in patches:
         raw = path.read_bytes()
         if not raw.endswith(b"\n"):
-            print(f"::warning::{path}: missing final newline; patch(1) may report an incomplete final line")
+            errors.append(f"{path}: missing final newline; refusing an incomplete patch file")
         try:
             lines = raw.decode("utf-8").splitlines()
         except UnicodeDecodeError as exc:
