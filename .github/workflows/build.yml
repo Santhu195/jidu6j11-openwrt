@@ -8,6 +8,7 @@ on:
     paths-ignore:
       - ".github/workflows/build.yml"
       - ".github/workflows/preflight.yml"
+      - "patches/openwrt/0004-mac80211-bump-release-for-local-ath11k-patches.patch"
   workflow_dispatch:
     inputs:
       force:
