@@ -261,6 +261,7 @@ jobs:
         fi
 
         echo "::notice::Serial libubox host retry passed; resuming the full OpenWrt build."
+        set -e
         make -j"$(($(nproc) + 1))" 2>&1 | tee -a ../openwrt-build.log
     - name: Save caches
       if: always()
