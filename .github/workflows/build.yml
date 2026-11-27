@@ -13,6 +13,7 @@ on:
       - ".github/workflows/preflight.yml"
       - "scripts/prepare.sh"
       - "patches/iwinfo/**"
+      - "scripts/verify-patch-series.py"
   workflow_dispatch:
     inputs:
       force:

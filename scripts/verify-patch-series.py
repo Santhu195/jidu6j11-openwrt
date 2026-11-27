@@ -21,7 +21,10 @@ def main() -> int:
     for path in patches:
         raw = path.read_bytes()
         if not raw.endswith(b"\n"):
-            errors.append(f"{path}: missing final newline; refusing an incomplete patch file")
+            # Existing upstream-derived patch files may legitimately lack a
+            # trailing newline. patch(1) can still apply them; keep this as a
+            # formatting warning while enforcing every hunk's exact counts.
+            print(f"::warning::{path}: missing final newline; unified-diff hunk counts will still be checked")
         try:
             lines = raw.decode("utf-8").splitlines()
         except UnicodeDecodeError as exc:
