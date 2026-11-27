@@ -240,34 +240,28 @@ jobs:
       shell: bash
       run: |
         set -o pipefail
-        make -j"$(($(nproc) + 1))" 2>&1 | tee ../openwrt-build.log
-
-    # The normal parallel build can report only the failed package summary.
-    # Capture the actual libubox host compiler diagnostic without hiding the
-    # original build failure. This retry is limited to the failed host target.
-    - name: Diagnose failed libubox host build (serial, verbose)
-      if: ${{ failure() && steps.build.outcome == 'failure' }}
-      working-directory: openwrt
-      continue-on-error: true
-      shell: bash
-      run: |
         set +e
-        set -o pipefail
-        if ! grep -Fq 'ERROR: package/libs/libubox [host] failed to build.' ../openwrt-build.log; then
-          echo "The failed build did not identify libubox host; preserving the original failure."
+        make -j"$(($(nproc) + 1))" 2>&1 | tee ../openwrt-build.log
+        build_rc=${PIPESTATUS[0]}
+        if [ "$build_rc" -eq 0 ]; then
           exit 0
         fi
 
-        echo "::warning::Retrying only libubox host compilation serially to expose the underlying compiler error."
-        make package/libs/libubox/host/clean V=s 2>&1 | tee ../libubox-host-clean.log
-        clean_rc=${PIPESTATUS[0]}
-        echo "libubox host clean exit code: $clean_rc"
+        if ! grep -Fq 'ERROR: package/libs/libubox [host] failed to build.' ../openwrt-build.log; then
+          echo "::error::OpenWrt build failed (exit $build_rc); failure was not the libubox host target."
+          exit "$build_rc"
+        fi
 
+        echo "::warning::libubox host failed in the parallel build; retrying only that host target serially with verbose output."
         make -j1 package/libs/libubox/host/compile V=s 2>&1 | tee ../libubox-host-diagnostic.log
-        compile_rc=${PIPESTATUS[0]}
-        echo "libubox host diagnostic compile exit code: $compile_rc"
-        exit 0
+        host_rc=${PIPESTATUS[0]}
+        if [ "$host_rc" -ne 0 ]; then
+          echo "::error::Serial verbose libubox host retry failed (exit $host_rc); see libubox-host-diagnostic.log."
+          exit "$build_rc"
+        fi
 
+        echo "::notice::Serial libubox host retry passed; resuming the full OpenWrt build."
+        make -j"$(($(nproc) + 1))" 2>&1 | tee -a ../openwrt-build.log
     - name: Save caches
       if: always()
       uses: actions/cache/save@v4
