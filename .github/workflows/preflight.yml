@@ -77,8 +77,8 @@ jobs:
           # into PKG_BUILD_DIR before the board package is assembled.
           make package/firmware/ipq-wifi/prepare V=s
 
-          if ! grep -qx 'PKG_RELEASE:=2' package/firmware/ipq-wifi/Makefile; then
-            echo "::error::Local JIDU BDF package release was not bumped to 2"
+          if ! grep -qx 'PKG_RELEASE:=3' package/firmware/ipq-wifi/Makefile; then
+            echo "::error::Local JIDU BDF package release was not bumped to 3"
             exit 1
           fi
 
