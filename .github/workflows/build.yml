@@ -232,11 +232,41 @@ jobs:
         echo "::notice::Pre-build patch validation passed; no compilation performed"
 
     - name: Build
+      id: build
       working-directory: openwrt
       env:
         BUILD_TIME_LOG: build-time.log
         CCACHE_DIR: ${{ github.workspace }}/cache/ccache
-      run: make -j"$(($(nproc) + 1))"
+      shell: bash
+      run: |
+        set -o pipefail
+        make -j"$(($(nproc) + 1))" 2>&1 | tee ../openwrt-build.log
+
+    # The normal parallel build can report only the failed package summary.
+    # Capture the actual libubox host compiler diagnostic without hiding the
+    # original build failure. This retry is limited to the failed host target.
+    - name: Diagnose failed libubox host build (serial, verbose)
+      if: ${{ failure() && steps.build.outcome == 'failure' }}
+      working-directory: openwrt
+      continue-on-error: true
+      shell: bash
+      run: |
+        set +e
+        set -o pipefail
+        if ! grep -Fq 'ERROR: package/libs/libubox [host] failed to build.' ../openwrt-build.log; then
+          echo "The failed build did not identify libubox host; preserving the original failure."
+          exit 0
+        fi
+
+        echo "::warning::Retrying only libubox host compilation serially to expose the underlying compiler error."
+        make package/libs/libubox/host/clean V=s 2>&1 | tee ../libubox-host-clean.log
+        clean_rc=${PIPESTATUS[0]}
+        echo "libubox host clean exit code: $clean_rc"
+
+        make -j1 package/libs/libubox/host/compile V=s 2>&1 | tee ../libubox-host-diagnostic.log
+        compile_rc=${PIPESTATUS[0]}
+        echo "libubox host diagnostic compile exit code: $compile_rc"
+        exit 0
 
     - name: Save caches
       if: always()
@@ -251,6 +281,10 @@ jobs:
     - name: Build Summary
       if: always()
       run: |
+        if [ ! -d openwrt ]; then
+          echo "::warning::OpenWrt tree was not prepared; skipping summary so the original failure remains visible."
+          exit 0
+        fi
         cd openwrt
         echo ""
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -279,7 +313,7 @@ jobs:
           echo "Persistent cache sizes:"
           du -sh ../cache/dl ../cache/ccache ../cache/npm 2>/dev/null || true
         else
-          echo "::error::OpenWrt ccache binary missing; compiler caching was not built"
+          echo "::warning::OpenWrt ccache binary missing; compiler caching was not built (often secondary when an earlier build step failed)"
         fi
         if [ -s build-time.log ]; then
           echo ""
@@ -289,6 +323,18 @@ jobs:
           echo "No OpenWrt build-time log was produced"
         fi
         cat feeds.conf
+
+    - name: Upload build failure diagnostics
+      if: ${{ always() && steps.build.outcome == 'failure' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: openwrt-build-diagnostics-${{ github.run_id }}
+        path: |
+          openwrt-build.log
+          libubox-host-clean.log
+          libubox-host-diagnostic.log
+        if-no-files-found: warn
+        retention-days: 14
 
     - name: Collect artifacts
       run: |
