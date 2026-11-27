@@ -6,6 +6,7 @@ on:
       - integrate/latest-main-five-patches-qcn-bdf-validated
       - experiment/jidu6j11-ahb-rss-rps-cake-mq-26177
       - experiment/jidu6j11-remote-streaming-wan-shaping
+      - experiment/jidu6j11-remote-streaming-ath11k-pagepool
     # Workflow-only maintenance commits must not start an expensive image build.
     paths-ignore:
       - ".github/workflows/build.yml"
@@ -188,8 +189,8 @@ jobs:
         # The ath11k retry/statistics backport changes the mac80211 package
         # revision; assert the bump before compilation so stale kmod packages
         # cannot be produced from the patched source.
-        if ! grep -Fq 'PKG_RELEASE:=21' package/kernel/mac80211/Makefile; then
-          echo "::error::mac80211 PKG_RELEASE must be 21 for the integrated ath11k patches"
+        if ! grep -Fq 'PKG_RELEASE:=22' package/kernel/mac80211/Makefile; then
+          echo "::error::mac80211 PKG_RELEASE must be 22 for the integrated ath11k patches"
           exit 1
         fi
 
@@ -390,7 +391,7 @@ jobs:
       if: github.ref != 'refs/heads/integrate/latest-main-five-patches-qcn-bdf-validated'
       uses: actions/upload-artifact@v4
       with:
-        name: jidu6j11-cake-mq-experiment-${{ github.run_id }}
+        name: jidu6j11-remote-ath11k-experiment-${{ github.run_id }}
         path: out/*
         if-no-files-found: error
         retention-days: 14

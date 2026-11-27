@@ -109,7 +109,9 @@ echo "::group::Apply open iwinfo PRs"
 for n in $IWINFO_PRS; do
   mkdir -p package/network/utils/iwinfo/patches
   echo "Fetching iwinfo PR #$n"
-  curl -fsSL --retry 3 "https://github.com/openwrt/iwinfo/pull/$n.patch" \
+  curl -fsSL --retry 8 --retry-all-errors --retry-delay 5 --retry-max-time 180 \
+    --connect-timeout 15 --max-time 120 \
+    "https://github.com/openwrt/iwinfo/pull/$n.patch" \
     -o "package/network/utils/iwinfo/patches/900-iwinfo-pr-$n.patch"
 done
 echo "::endgroup::"
