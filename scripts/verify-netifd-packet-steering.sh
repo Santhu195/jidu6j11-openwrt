@@ -30,20 +30,23 @@ if [ "$parent_count" -ne 1 ]; then
   exit 1
 fi
 
-# Preserve upstream PR #26222: fully hardware-spread RSS devices keep RPS
-# disabled. The local patch must not force cpu=-1 / mask f for those devices.
+# Preserve upstream PR #26222 for Ethernet and non-RSS devices, while
+# testing PR #26655's separate Wi-Fi RSS policy on its own branch.
 require_text "$SCRIPT" 'let hw_spread = !length(dev.tasks) &&' "upstream hardware-spread detection"
 require_text "$SCRIPT" '(dev.rss || length(dev.rx_queues) >= length(cpus))' "hardware RSS / queue-spread detection"
-require_text "$SCRIPT" 'else if (!hw_spread)' "RPS fallback only when hardware does not already spread receive work"
-if grep -Fq 'else if (hw_spread && dev.rss)' "$SCRIPT"; then
-  echo "::error::netifd preflight: local Wi-Fi RPS override conflicts with upstream PR #26222"
-  exit 1
-fi
+require_text "$SCRIPT" 'else if (hw_spread && dev.rss)' "wireless RSS RPS all-CPU override"
+require_text "$SCRIPT" 'else if (!hw_spread)' "RPS fallback for partially spread devices"
 
 rps_line="$(grep -n -F 'else if (rps_cpus)' "$SCRIPT" | head -n1 | cut -d: -f1)"
+rss_line="$(grep -n -F 'else if (hw_spread && dev.rss)' "$SCRIPT" | head -n1 | cut -d: -f1)"
 default_line="$(grep -n -F 'else if (!hw_spread)' "$SCRIPT" | head -n1 | cut -d: -f1)"
-if [ -z "$rps_line" ] || [ -z "$default_line" ] || [ "$rps_line" -ge "$default_line" ]; then
-  echo "::error::netifd preflight: explicit/partial IRQ steering must precede the unspread fallback"
+if [ -z "$rps_line" ] || [ -z "$rss_line" ] || [ -z "$default_line" ] ||
+   [ "$rps_line" -ge "$rss_line" ] || [ "$rss_line" -ge "$default_line" ]; then
+  echo "::error::netifd preflight: explicit RPS, wireless RSS and partial-spread fallback order is wrong"
+  exit 1
+fi
+if ! grep -A5 -F 'else if (hw_spread && dev.rss)' "$SCRIPT" | grep -Fq 'cpu = -1;'; then
+  echo "::error::netifd preflight: wireless RSS branch does not select all CPUs"
   exit 1
 fi
 require_text "$SCRIPT" 'if (disable || cpu == null)' "null CPU mask conversion to zero"
@@ -69,21 +72,22 @@ for token in (
     "let hw_spread = !length(dev.tasks) &&",
     "(dev.rss || length(dev.rx_queues) >= length(cpus))",
     "else if (rps_cpus)",
+    "else if (hw_spread && dev.rss)",
     "else if (!hw_spread)",
     "if (disable || cpu == null)",
     "else if (cpu < 0)",
 ):
-    assert token in source, f"missing upstream packet-steering policy token: {token}"
-assert "else if (hw_spread && dev.rss)" not in source, (
-    "local Wi-Fi RPS override conflicts with upstream PR #26222"
-)
+    assert token in source, f"missing packet-steering policy token: {token}"
+assert "else if (hw_spread && dev.rss)" in source
 
-def rps_mask(*, hw_spread: bool, explicit_all_cpus: bool = False,
-             rps_cpus=None) -> str:
+def rps_mask(*, hw_spread: bool, is_rss: bool = False,
+             explicit_all_cpus: bool = False, rps_cpus=None) -> str:
     if explicit_all_cpus:
         cpu = -1
     elif rps_cpus is not None:
         cpu = rps_cpus
+    elif hw_spread and is_rss:
+        cpu = -1
     elif not hw_spread:
         cpu = 1
     else:
@@ -96,11 +100,12 @@ def rps_mask(*, hw_spread: bool, explicit_all_cpus: bool = False,
         return "".join(format(1 << n, "x") for n in cpu)
     return format(1 << cpu, "x")
 
-assert rps_mask(hw_spread=True) == "0"          # WLAN RSS and EDMA RXDESC
-assert rps_mask(hw_spread=False) == "2"         # unspread fallback
+assert rps_mask(hw_spread=True, is_rss=True) == "f"    # Wi-Fi RSS: stack on all CPUs
+assert rps_mask(hw_spread=True, is_rss=False) == "0"   # EDMA RXDESC: hardware already spreads
+assert rps_mask(hw_spread=False, is_rss=True) == "2"   # partial IRQ spread: other CPU
 assert rps_mask(hw_spread=True, explicit_all_cpus=True) == "f"
-assert rps_mask(hw_spread=True, rps_cpus=2) == "4"
-print("RSS/RPS policy fixture passed: fully-spread Wi-Fi RSS=0; EDMA RXDESC=0")
+assert rps_mask(hw_spread=True, is_rss=True, rps_cpus=2) == "4"
+print("RSS/RPS policy fixture passed: Wi-Fi RSS=f; EDMA RXDESC=0; partial spread=2")
 PY
 
 echo "::notice::netifd preflight passed: EDMA RXDESC discovery, upstream hardware-RSS policy and WLAN hotplug reload"
