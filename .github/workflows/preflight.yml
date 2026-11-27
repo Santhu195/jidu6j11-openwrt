@@ -20,6 +20,7 @@ on:
       - "scripts/**"
       - ".github/workflows/preflight.yml"
       - ".github/workflows/build.yml"
+      - "build-trigger/**"
   workflow_dispatch:
 
 permissions:
