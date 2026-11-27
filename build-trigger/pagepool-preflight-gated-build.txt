@@ -1,0 +1,1 @@
+This marker requests exactly one firmware build for this commit, but only after the matching source-preflight succeeds. The build workflow verifies the branch head and checks for an existing build before compiling.
