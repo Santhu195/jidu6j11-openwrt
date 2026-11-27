@@ -1,6 +1,9 @@
 name: OpenWrt Snapshot Build for Jio AX6000 (JIDU6J11)
 
 on:
+  push:
+    branches:
+      - integrate/latest-main-five-matches-qcn-bdf
   workflow_dispatch:
     inputs:
       force:
