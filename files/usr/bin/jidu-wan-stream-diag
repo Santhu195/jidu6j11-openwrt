@@ -7,12 +7,14 @@ uci_get() {
 	uci -q get "$1" 2>/dev/null || printf '%s' 'unset'
 }
 
-WAN="$1"
+WAN=""
+IFB=""
+[ "$#" -ge 1 ] && WAN="$1"
+[ "$#" -ge 2 ] && IFB="$2"
 if [ -z "$WAN" ]; then
 	WAN="$(uci_get qosmate.settings.WAN)"
 fi
 [ -n "$WAN" ] && [ "$WAN" != "unset" ] || WAN="wan"
-IFB="$2"
 [ -n "$IFB" ] || IFB="ifb-$WAN"
 
 section() {
