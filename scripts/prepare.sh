@@ -66,6 +66,19 @@ echo "::group::Copy custom BDFs"
 if [ -d "$ROOT/bdf" ]; then
   mkdir -p package/firmware/ipq-wifi/src
   cp -v "$ROOT"/bdf/* package/firmware/ipq-wifi/src/
+
+  # The local BDF overlay changes the generated ipq-wifi package payload.
+  # Bump its release so distinct board-data contents never share a version.
+  IPQ_WIFI_MAKEFILE="package/firmware/ipq-wifi/Makefile"
+  if ! grep -qx 'PKG_RELEASE:=1' "$IPQ_WIFI_MAKEFILE"; then
+    echo "::error::Unexpected ipq-wifi PKG_RELEASE; review the local BDF package version bump"
+    exit 1
+  fi
+  sed -i 's/^PKG_RELEASE:=1$/PKG_RELEASE:=2/' "$IPQ_WIFI_MAKEFILE"
+  if ! grep -qx 'PKG_RELEASE:=2' "$IPQ_WIFI_MAKEFILE"; then
+    echo "::error::Failed to bump ipq-wifi PKG_RELEASE for local BDF data"
+    exit 1
+  fi
 fi
 echo "::endgroup::"
 
