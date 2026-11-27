@@ -1,58 +1,77 @@
 From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
-From: Jonas Köppeler <j.koeppeler@tu-berlin.de>
-Date: Thu, 19 Nov 2026 10:43:57 +0100
-Subject: [PATCH] net/sched: sch_cake: fix unintended tin override with cake_mq
+From: OpenWrt CAKE-MQ integration
+Subject: [PATCH] generic: backport CAKE-MQ diffserv tin-selection fix
 
-CAKE permits a skb->priority tin override when its major number matches
-the qdisc handle. cake_mq creates its child CAKE qdiscs without handles,
-so their handle is zero. Forwarded IPv4 traffic can have skb->priority
-rewritten from TOS by ip_forward_update_priority (enabled by default),
-which can accidentally match that zero handle and bypass DSCP tin
-selection.
+Carry the upstream net-next fix for the child-qdisc handle check. This
+keeps DSCP classification correct for forwarded IPv4 traffic under
+cake_mq diffserv4/diffserv8, while leaving standalone CAKE unchanged.
 
-For a shared cake_mq child, compare against the major number of the
-parent cake_mq handle instead. Plain CAKE keeps using its own handle.
+The patch is ordered after the local CAKE-MQ implementation (746/747).
 
-This is important for diffserv4 classification of forwarded traffic.
-For example, AF41 should enter the Video tin, not be reclassified through
-the legacy skb->priority override.
-
-Link: https://lkml.rescloud.iu.edu/hypermail/linux/kernel/2611.2/12378.html
-Fixes: ebc65a873eff ("net/sched/sch_cake: Add cake_mq qdisc for using cake on mq devices")
-Signed-off-by: Jonas Köppeler <j.koeppeler@tu-berlin.de>
 ---
- net/sched/sch_cake.c | 6 ++++--
- 1 file changed, 4 insertions(+), 2 deletions(-)
-
---- a/net/sched/sch_cake.c
-+++ b/net/sched/sch_cake.c
-@@ -1679,7 +1679,7 @@ static struct cake_tin_data *cake_select_tin(struct Qdisc *sch,
- {
- 	struct cake_sched_data *qd = qdisc_priv(sch);
- 	struct cake_sched_config *q = qd->config;
--	u32 tin, mark;
-+	u32 tin, mark, handle;
- 	bool wash;
- 	u8 dscp;
-
-@@ -1689,6 +1689,8 @@ static struct cake_tin_data *cake_select_tin(struct Qdisc *sch,
- 	 */
- 	mark = (skb->mark & q->fwmark_mask) >> q->fwmark_shft;
- 	wash = !!(q->rate_flags & CAKE_FLAG_WASH);
-+	handle = q->is_shared ? TC_H_MAJ(sch->parent) : sch->handle;
+ target/linux/generic/pending-6.18/748-net-sched-sch_cake-fix-cake_mq-diffserv-tin-override.patch | 58 ++++++++++++++++++++++++++++++++
+ 1 file changed, 58 insertions(+)
+diff --git a/target/linux/generic/pending-6.18/748-net-sched-sch_cake-fix-cake_mq-diffserv-tin-override.patch b/target/linux/generic/pending-6.18/748-net-sched-sch_cake-fix-cake_mq-diffserv-tin-override.patch
+new file mode 100644
+index 0000000..1111111
+--- /dev/null
++++ b/target/linux/generic/pending-6.18/748-net-sched-sch_cake-fix-cake_mq-diffserv-tin-override.patch
+@@ -0,0 +1,58 @@
++From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
++From: Jonas Köppeler <j.koeppeler@tu-berlin.de>
++Date: Thu, 19 Nov 2026 10:43:57 +0100
++Subject: [PATCH] net/sched: sch_cake: fix unintended tin override with cake_mq
 +
- 	if (wash)
- 		dscp = cake_handle_diffserv(skb, wash);
-
-@@ -1698,7 +1700,7 @@ static struct cake_tin_data *cake_select_tin(struct Qdisc *sch,
- 	else if (mark && mark <= qd->tin_cnt)
- 		tin = qd->tin_order[mark - 1];
-
--	else if (TC_H_MAJ(skb->priority) == sch->handle &&
-+	else if (TC_H_MAJ(skb->priority) == handle &&
- 		 TC_H_MIN(skb->priority) > 0 &&
- 		 TC_H_MIN(skb->priority) <= qd->tin_cnt)
- 		tin = qd->tin_order[TC_H_MIN(skb->priority) - 1];
-
---
-2.43.0
++CAKE permits a skb->priority tin override when its major number matches
++the qdisc handle. cake_mq creates its child CAKE qdiscs without handles,
++so their handle is zero. Forwarded IPv4 traffic can have skb->priority
++rewritten from TOS by ip_forward_update_priority (enabled by default),
++which can accidentally match that zero handle and bypass DSCP tin
++selection.
++
++For a shared cake_mq child, compare against the major number of the
++parent cake_mq handle instead. Plain CAKE keeps using its own handle.
++
++This is important for diffserv4 classification of forwarded traffic.
++For example, AF41 should enter the Video tin, not be reclassified through
++the legacy skb->priority override.
++
++Link: https://lkml.rescloud.iu.edu/hypermail/linux/kernel/2611.2/12378.html
++Fixes: ebc65a873eff ("net/sched/sch_cake: Add cake_mq qdisc for using cake on mq devices")
++Signed-off-by: Jonas Köppeler <j.koeppeler@tu-berlin.de>
++---
++ net/sched/sch_cake.c | 6 ++++--
++ 1 file changed, 4 insertions(+), 2 deletions(-)
++
++--- a/net/sched/sch_cake.c
+++++ b/net/sched/sch_cake.c
++@@ -1679,7 +1679,7 @@ static struct cake_tin_data *cake_select_tin(struct Qdisc *sch,
++ {
++ 	struct cake_sched_data *qd = qdisc_priv(sch);
++ 	struct cake_sched_config *q = qd->config;
++-	u32 tin, mark;
+++	u32 tin, mark, handle;
++ 	bool wash;
++ 	u8 dscp;
++
++@@ -1689,6 +1689,8 @@ static struct cake_tin_data *cake_select_tin(struct Qdisc *sch,
++ 	 */
++ 	mark = (skb->mark & q->fwmark_mask) >> q->fwmark_shft;
++ 	wash = !!(q->rate_flags & CAKE_FLAG_WASH);
+++	handle = q->is_shared ? TC_H_MAJ(sch->parent) : sch->handle;
+++
++ 	if (wash)
++ 		dscp = cake_handle_diffserv(skb, wash);
++
++@@ -1698,7 +1700,7 @@ static struct cake_tin_data *cake_select_tin(struct Qdisc *sch,
++ 	else if (mark && mark <= qd->tin_cnt)
++ 		tin = qd->tin_order[mark - 1];
++
++-	else if (TC_H_MAJ(skb->priority) == sch->handle &&
+++	else if (TC_H_MAJ(skb->priority) == handle &&
++ 		 TC_H_MIN(skb->priority) > 0 &&
++ 		 TC_H_MIN(skb->priority) <= qd->tin_cnt)
++ 		tin = qd->tin_order[TC_H_MIN(skb->priority) - 1];
++
++--
++2.43.0
