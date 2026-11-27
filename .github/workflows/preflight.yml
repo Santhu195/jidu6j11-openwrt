@@ -5,6 +5,7 @@ on:
     branches:
       - integrate/latest-main-five-patches
       - integrate/latest-main-five-patches-qcn-bdf-validated
+      - experiment/jidu6j11-wifi-rss-rps
     paths:
       # Every input copied into or used to prepare the OpenWrt tree.
       - "bdf/**"
