@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Clone OpenWrt, merge the device-support PR, apply patches, set up feeds and .config.
+# The experiment branch pins OpenWrt and JIDU PR SHAs to the known-good workflow baseline.
 # CI cache validation rerun: keep both branch builds exercising the same cache layout.
 # Run from anywhere; works relative to the repo root.
 # Env: OPENWRT_REPO, OPENWRT_BRANCH, OPENWRT_COMMIT, PR_NUMBER, TARGET, SUBTARGET, EXPECTED_DEVICES, PACKAGES_COMMIT
