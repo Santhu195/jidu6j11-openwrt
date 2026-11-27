@@ -78,14 +78,17 @@ python3 "$ROOT/scripts/verify-ath11k-source.py" "$DPRX"
 
 # Keep the compatible 999z03 batch-free completion path. The optional
 # 999z10 chunked-poll patch fails hunks 2 and 3 against this pinned backports
-# 7.2 tree after 999z03; 999z12 depends on that unrebased chunk structure.
+# 7.2 tree after 999z03; 999z12 depends on that unrebased chunk structure. The
+# 999z11 ring-pointer patch also fails its dp_tx.c and mac.c hunks after the
+# earlier TXQ patches; defer it rather than applying only its partial changes.
 require_text "$DPTX" "struct ath11k_dp_tx_compl c = { .free = LIST_HEAD_INIT(c.free) };" "compatible batched completion free-list state"
 require_text "$DPTX" "ath11k_dp_tx_complete_msdu(ar, msdu, &ts, &c);" "compatible batched completion callback"
 for deferred_patch in \
   "$ROOT/patches/ath11k/999z10-ath11k-batch-tx-completion-poll.patch" \
-  "$ROOT/patches/ath11k/999z12-ath11k-prefetch-tx-completion-buffers.patch"; do
+  "$ROOT/patches/ath11k/999z12-ath11k-prefetch-tx-completion-buffers.patch" \
+  "$ROOT/patches/ath11k/999z11-ath11k-cache-ring-pointers.patch"; do
   if [ -e "$deferred_patch" ]; then
-    echo "::error::Deferred TX-completion patch must be rebased against the active 999z03 API before inclusion: $(basename "$deferred_patch")"
+    echo "::error::Deferred ath11k patch must be rebased against the active pinned backports/TXQ source before inclusion: $(basename "$deferred_patch")"
     exit 1
   fi
 done
