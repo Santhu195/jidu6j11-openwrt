@@ -182,6 +182,7 @@ IMAGE_MK="target/linux/${TARGET}/image/${SUBTARGET}.mk"
 JIDU_DTS="target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6611.dts"
 JIDU_COMMON_DTS="target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu6j11.dtsi"
 BDF_NAME="board-jiorouter_ax6000-jidu6j11.ipq9574"
+QCN_BDF_NAME="board-jiorouter_ax6000-jidu6j11.qcn9074"
 
 for path in "$IMAGE_MK" "$JIDU_DTS" "$JIDU_COMMON_DTS" \
             "package/kernel/mac80211/ath.mk" \
@@ -218,6 +219,21 @@ if [ ! -s "$ROOT/bdf/$BDF_NAME" ] ||
    [ ! -s "package/firmware/ipq-wifi/src/$BDF_NAME" ] ||
    ! grep -Fq 'jiorouter_ax6000-jidu6j11' package/firmware/ipq-wifi/Makefile; then
   echo "::error::JIDU IPQ9574 board data is missing or not registered in ipq-wifi"
+  exit 1
+fi
+
+if [ ! -s "$ROOT/bdf/$QCN_BDF_NAME" ] ||
+   [ ! -s "package/firmware/ipq-wifi/src/$QCN_BDF_NAME" ] ||
+   ! grep -Fq 'qcn9074' package/firmware/ipq-wifi/Makefile; then
+  echo "::error::JIDU QCN9074 board data is missing or not supported by ipq-wifi"
+  exit 1
+fi
+
+# The current JIDU6J11 device-support PR already enables the shared Q6
+# reservation used by its integrated WCSS radio; no local duplicate DTS patch
+# should be needed.
+if ! grep -A2 -F '&q6_region {' "$JIDU_COMMON_DTS" | grep -Fq 'status = "okay";'; then
+  echo "::error::JIDU Q6 reserved-memory region is not enabled in the common DTS"
   exit 1
 fi
 
