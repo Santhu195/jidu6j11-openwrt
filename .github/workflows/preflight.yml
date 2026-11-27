@@ -8,6 +8,7 @@ on:
       - experiment/jidu6j11-ath11k-ahb-affinity
       - experiment/jidu6j11-ahb-affinity-wifi-rss-rps
       - experiment/jidu6j11-ahb-rss-rps-cake-mq-26177
+      - experiment/jidu6j11-ath11k-pagepool-dp26075
     paths:
       # Every input copied into or used to prepare the OpenWrt tree.
       - "bdf/**"
@@ -142,5 +143,5 @@ jobs:
             package/network/config/netifd/files/etc/hotplug.d/net/20-packet-steering \
             package/network/config/netifd/Makefile
 
-          grep -Fq 'PKG_RELEASE:=21' package/kernel/mac80211/Makefile
+          grep -Fq 'PKG_RELEASE:=22' package/kernel/mac80211/Makefile
           echo "::notice::All source preflight checks passed. No firmware or kernel compilation was run."
