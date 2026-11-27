@@ -84,11 +84,21 @@ require_text "$DPTX" "ath11k_mac_tx_push_pending" "completion-driven TXQ resched
 require_text "$DPTXH" "int budget);" "budgeted completion declaration"
 require_text "$MACH" "void ath11k_mac_tx_push_pending" "TXQ rescheduling prototype"
 
-# TX skb cleanup, RX page-fragment cache, IRQ idempotence and ring-size reduction.
+# TX/RX buffer lifecycle, page-pool allocation, IRQ idempotence and ring-size reduction.
 require_text "$CORE" "ath11k_dp_tx_free_pending(ab);" "firmware-recovery TX skb cleanup"
 require_text "$DPTX" "void ath11k_dp_tx_free_pending" "pending TX skb cleanup implementation"
-require_text "$DPH" "struct page_frag_cache frag_cache;" "private RX page-fragment cache"
-require_text "$DPRX" "ath11k_dp_rx_alloc_skb" "private RX skb allocator"
+require_text "$DPH" "struct page_pool *page_pool;" "dedicated RX page pool"
+require_text "$DPRX" "page_pool_dev_alloc_frag" "RX page-pool fragment allocator"
+require_text "$DPRX" "page_pool_create(&pp_params)" "per-radio RX page-pool creation"
+require_text "$DPH" "struct sk_buff **bufs;" "RX buffer lookup table"
+require_text "$DPH" "u32 *free_ids;" "RX buffer free-ID stack"
+require_text "$DPRX" "rx_ring->refill_deficit" "RX refill deficit retention"
+require_text "$DP" "ath11k_dp_service_rx_refill(ab, grp_id);" "RX refill service before budgeted handlers"
+require_text "$DPRX" "ATH11K_DP_RX_REFILL_CHUNK" "batched RX refill IDs"
+require_text "$DPRX" "skb_set_hash(msdu," "hardware RX flow hash propagation"
+require_text "$DPTX" "napi_consume_skb(msdu, budget);" "batched TX completion skb frees"
+require_text "$MAC" "ath11k_mac_txq_work" "deferred TXQ bottom-half work"
+require_text "$MAC" "work_pending(&ar->txq_work)" "coalesced TXQ wake work"
 require_text "$PCIC" "irq_set_affinity_and_hint" "PCI IRQ affinity placement"
 require_text "$PCIC" "irq_update_affinity_hint" "PCI IRQ affinity cleanup"
 require_text "$AHB" "ath11k_ahb_ext_grp_disable(irq_grp);" "idempotent AHB IRQ disable"
@@ -115,4 +125,4 @@ if grep -Fq "ath11k_dp_tx_idr_remove" "$DPTX"; then
   exit 1
 fi
 
-echo "::notice::Ath11k preflight passed: airtime accounting, TXQ scheduler, completion budget, recovery cleanup, RX allocation, PCI IRQ and AHB DP-ring affinity patches are present"
+echo "::notice::Ath11k preflight passed: AQL, TXQ scheduling, page-pool RX, RX/TX buffer tables, refill protection, completion batching and IRQ affinity are present"
