@@ -31,7 +31,6 @@ env:
   OPENWRT_COMMIT: "eb54de199ffd2e81d743f4ca580f561471e586f5"
   PR_NUMBER: "26498"
   PR_COMMIT: "727ed7916a1df588a5a325119e837fec5483c062"
-  IWINFO_PRS: "51"
   PACKAGES_COMMIT: "074500b953d27131881f6cb2f37edbb86be985ba"
   TARGET: qualcommbe
   SUBTARGET: ipq95xx
@@ -76,6 +75,21 @@ jobs:
       - name: Download source archives (no compilation)
         working-directory: openwrt
         run: make download -j8
+
+      - name: Prepare libiwinfo and verify pinned IPQ9574 device ID (no compilation)
+        working-directory: openwrt
+        run: |
+          make package/network/utils/iwinfo/prepare V=s
+          iwinfo_src=$(find build_dir/target-* -type f -path '*/libiwinfo-*/devices.txt' -print -quit)
+          if [ -z "$iwinfo_src" ]; then
+            echo "::error::Prepared libiwinfo devices.txt was not found"
+            exit 1
+          fi
+          if ! grep -Fq '"qcom,ipq9574-wifi"' "$iwinfo_src"; then
+            echo "::error::Prepared libiwinfo source is missing the pinned IPQ9574 device identifier"
+            exit 1
+          fi
+          echo "::notice::Pinned IPQ9574 iwinfo device identifier verified"
 
       - name: Prepare and verify both JIDU board-data files (no compilation)
         working-directory: openwrt

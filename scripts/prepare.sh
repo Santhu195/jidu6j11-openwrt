@@ -14,7 +14,6 @@ OPENWRT_BRANCH="${OPENWRT_BRANCH:-main}"
 OPENWRT_COMMIT="${OPENWRT_COMMIT:-}"
 PR_NUMBER="${PR_NUMBER:-}"
 PR_COMMIT="${PR_COMMIT:-}"
-IWINFO_PRS="${IWINFO_PRS:-}"
 PACKAGES_COMMIT="${PACKAGES_COMMIT:-}"
 TARGET="${TARGET:-qualcommbe}"
 SUBTARGET="${SUBTARGET:-ipq95xx}"
@@ -58,7 +57,6 @@ cat > "$ROOT/build-info.env" <<EOF
 UPSTREAM_SHA=$UPSTREAM_SHA
 PR_NUMBER=$PR_NUMBER
 PR_SHA=$PR_SHA
-IWINFO_PRS="$IWINFO_PRS"
 PACKAGES_COMMIT=$PACKAGES_COMMIT
 EOF
 echo "::endgroup::"
@@ -105,14 +103,20 @@ for p in "$ROOT"/patches/ath11k/*.patch; do
 done
 echo "::endgroup::"
 
-echo "::group::Apply open iwinfo PRs"
-for n in $IWINFO_PRS; do
-  mkdir -p package/network/utils/iwinfo/patches
-  echo "Fetching iwinfo PR #$n"
-  curl -fsSL --retry 8 --retry-all-errors --retry-delay 5 --retry-max-time 180 \
-    --connect-timeout 15 --max-time 120 \
-    "https://github.com/openwrt/iwinfo/pull/$n.patch" \
-    -o "package/network/utils/iwinfo/patches/900-iwinfo-pr-$n.patch"
+echo "::group::Apply pinned iwinfo patches"
+mkdir -p package/network/utils/iwinfo/patches
+iwinfo_patches=( "$ROOT"/patches/iwinfo/*.patch )
+if [ "${#iwinfo_patches[@]}" -eq 0 ]; then
+  echo "::error::No pinned iwinfo patches found in $ROOT/patches/iwinfo"
+  exit 1
+fi
+for p in "${iwinfo_patches[@]}"; do
+  dest="package/network/utils/iwinfo/patches/$(basename "$p")"
+  if [ -e "$dest" ]; then
+    echo "::error::Pinned iwinfo patch collides with upstream file: $dest"
+    exit 1
+  fi
+  cp -v "$p" "$dest"
 done
 echo "::endgroup::"
 

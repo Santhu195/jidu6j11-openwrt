@@ -1,0 +1,27 @@
+From 49e3d3fa4752971deefe3af9c0608fe461a32df9 Mon Sep 17 00:00:00 2001
+From: Sahil Bakshi <sahilbakshi2001@gmail.com>
+Date: Thu, 5 Nov 2026 12:14:22 +0000
+Subject: [PATCH] devices: add device id for Qualcomm Atheros IPQ9574
+
+This is the merged upstream iwinfo PR #51, pinned locally because the
+OpenWrt base snapshot uses libiwinfo commit 66bdd1a071895d91babc9b9228bb84626bbce226,
+which predates the merge.
+
+Signed-off-by: Sahil Bakshi <sahilbakshi2001@gmail.com>
+Signed-off-by: Robert Marko <robimarko@gmail.com>
+---
+ devices.txt | 1 +
+ 1 file changed, 1 insertion(+)
+
+--- a/devices.txt
++++ b/devices.txt
+@@ -262,6 +262,7 @@
+ "qcom,ipq4019-wifi"     0      0  "Qualcomm Atheros" "IPQ4019"
+ "qcom,ipq5018-wifi"     0      0  "Qualcomm Atheros" "IPQ5018"
+ "qcom,ipq6018-wifi"     0      0  "Qualcomm Atheros" "IPQ6018"
+ "qcom,ipq8074-wifi"     0      0  "Qualcomm Atheros" "IPQ8074"
++"qcom,ipq9574-wifi"     0      0  "Qualcomm Atheros" "IPQ9574"
+ "qcom,qcn6122-wifi"     0      0  "Qualcomm Atheros" "QCN6102/QCN6122"
+ "mediatek,mt7622-wmac"  0      0  "MediaTek" "MT7622"
+-- 
+2.43.0

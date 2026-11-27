@@ -11,6 +11,8 @@ on:
     paths-ignore:
       - ".github/workflows/build.yml"
       - ".github/workflows/preflight.yml"
+      - "scripts/prepare.sh"
+      - "patches/iwinfo/**"
   workflow_dispatch:
     inputs:
       force:
@@ -29,7 +31,6 @@ env:
   OPENWRT_COMMIT: "eb54de199ffd2e81d743f4ca580f561471e586f5"
   PR_NUMBER: "26498"
   PR_COMMIT: "727ed7916a1df588a5a325119e837fec5483c062"
-  IWINFO_PRS: "51"
   PACKAGES_COMMIT: "074500b953d27131881f6cb2f37edbb86be985ba"
   TARGET: qualcommbe
   SUBTARGET: ipq95xx
@@ -63,11 +64,6 @@ jobs:
           if [ -z "$pr" ] && [ -n "$PR_NUMBER" ]; then
             pr=$(git ls-remote "$OPENWRT_REPO" "refs/pull/$PR_NUMBER/head" | cut -f1)
           fi
-          iw=""
-          for n in $IWINFO_PRS; do
-            iw="$iw $(git ls-remote https://github.com/openwrt/iwinfo "refs/pull/$n/head" | cut -f1)"
-          done
-
           # Hash every active feed revision too. OpenWrt main, LuCI, routing,
           # telephony and video feeds can advance independently of main.
           feeds_conf=$(mktemp)
@@ -108,7 +104,7 @@ jobs:
           rm -f "$feeds_conf"
 
           own=$(git ls-tree -r HEAD -- config patches files bdf feeds.conf.default.d scripts .github | sha256sum | cut -d' ' -f1)
-          hash=$(printf '%s\n' "$up" "$pr" "$iw" "$feed_versions" "$own" | sha256sum | cut -c1-16)
+          hash=$(printf '%s\n' "$up" "$pr" "$feed_versions" "$own" | sha256sum | cut -c1-16)
 
           last=$(gh release view --json body -q .body 2>/dev/null | sed -n 's/.*Build-Hash: //p' | head -n1 || true)
           echo "current=$hash last=$last"
@@ -176,8 +172,15 @@ jobs:
     - name: Validate kernel and ath11k sources (no compilation)
       working-directory: openwrt
       run: |
-        # Source downloads have already completed above; prepare applies the
-        # backports patch series without compiling kernel or driver objects.
+        # Source downloads have already completed above; prepare source packages
+        # without compiling kernel or driver objects.
+        make package/network/utils/iwinfo/prepare V=s
+        iwinfo_src=$(find build_dir/target-* -type f -path '*/libiwinfo-*/devices.txt' -print -quit)
+        if [ -z "$iwinfo_src" ] || ! grep -Fq '"qcom,ipq9574-wifi"' "$iwinfo_src"; then
+          echo "::error::Prepared libiwinfo source is missing the pinned IPQ9574 device identifier"
+          exit 1
+        fi
+
         make package/kernel/mac80211/prepare V=s
 
         src=$(find build_dir/target-* -type d -path '*/mac80211-regular/backports-7.2' -print -quit)
