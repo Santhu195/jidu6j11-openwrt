@@ -26,7 +26,9 @@ permissions:
 env:
   OPENWRT_REPO: https://github.com/openwrt/openwrt.git
   OPENWRT_BRANCH: main
+  OPENWRT_COMMIT: "eb54de199ffd2e81d743f4ca580f561471e586f5"
   PR_NUMBER: "26498"
+  PR_COMMIT: "727ed7916a1df588a5a325119e837fec5483c062"
   IWINFO_PRS: "51"
   PACKAGES_COMMIT: "074500b953d27131881f6cb2f37edbb86be985ba"
   TARGET: qualcommbe
@@ -56,7 +58,7 @@ jobs:
       - name: Pin current OpenWrt main
         id: upstream
         run: |
-          sha=$(git ls-remote "$OPENWRT_REPO" "refs/heads/$OPENWRT_BRANCH" | cut -f1)
+          sha="${OPENWRT_COMMIT:-$(git ls-remote "$OPENWRT_REPO" "refs/heads/$OPENWRT_BRANCH" | cut -f1)}"
           if [ -z "$sha" ]; then
             echo "::error::Could not resolve OpenWrt main"
             exit 1
