@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - integrate/latest-main-five-patches-qcn-bdf-validated
+    # Workflow-only maintenance commits must not start an expensive image build.
+    paths-ignore:
+      - ".github/workflows/build.yml"
+      - ".github/workflows/preflight.yml"
   workflow_dispatch:
     inputs:
       force:
