@@ -6,6 +6,11 @@ on:
       - integrate/latest-main-five-patches
       - integrate/latest-main-five-patches-qcn-bdf-validated
     paths:
+      # Every input copied into or used to prepare the OpenWrt tree.
+      - "bdf/**"
+      - "config/**"
+      - "files/**"
+      - "feeds.conf.default.d/**"
       - "patches/**"
       - "scripts/**"
       - ".github/workflows/preflight.yml"
