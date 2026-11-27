@@ -92,6 +92,14 @@ require_text "$DPRX" "ath11k_dp_rx_alloc_skb" "private RX skb allocator"
 require_text "$PCIC" "irq_set_affinity_and_hint" "PCI IRQ affinity placement"
 require_text "$PCIC" "irq_update_affinity_hint" "PCI IRQ affinity cleanup"
 require_text "$AHB" "ath11k_ahb_ext_grp_disable(irq_grp);" "idempotent AHB IRQ disable"
+# Keep AHB DP-ring interrupts distributed while leaving copy-engine groups on their default CPU.
+require_text "$AHB" "static int ath11k_ahb_ext_irq_cpu(struct ath11k_base *ab, int i)" "AHB DP-ring CPU mapper"
+require_text "$AHB" "ab->hw_params.ring_mask->rx[i]" "AHB REO ring affinity lookup"
+require_text "$AHB" "ab->hw_params.ring_mask->tx[i]" "AHB TX completion ring affinity lookup"
+require_text "$AHB" "cpumask_nth((ffs(rx) - 1) % num_online_cpus()," "AHB RX ring CPU distribution"
+require_text "$AHB" "cpumask_nth((ffs(tx) - 1) % num_online_cpus()," "AHB TX ring CPU distribution"
+require_text "$AHB" "irq_set_affinity_and_hint(ab->irq_num[irq_grp->irqs[j]]," "AHB DP IRQ affinity hint"
+require_text "$AHB" "irq_update_affinity_hint(ab->irq_num[irq_grp->irqs[j]], NULL);" "AHB DP IRQ affinity cleanup"
 # Verify the intended 512 MiB-router RX memory profile exactly.
 require_define_value "$DPH" DP_RXDMA_BUF_RING_SIZE 2048 "RXDMA buffer ring"
 require_define_value "$DPH" DP_RXDMA_REFILL_RING_SIZE 2048 "RXDMA refill ring"
@@ -107,4 +115,4 @@ if grep -Fq "ath11k_dp_tx_idr_remove" "$DPTX"; then
   exit 1
 fi
 
-echo "::notice::Ath11k preflight passed: airtime accounting, TXQ scheduler, completion budget, recovery cleanup, RX allocation and IRQ patches are present"
+echo "::notice::Ath11k preflight passed: airtime accounting, TXQ scheduler, completion budget, recovery cleanup, RX allocation, PCI IRQ and AHB DP-ring affinity patches are present"
