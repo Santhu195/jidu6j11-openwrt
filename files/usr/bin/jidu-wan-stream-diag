@@ -1,0 +1,75 @@
+#!/bin/sh
+# Read-only WAN/CAKE diagnostics for remote game-streaming tests.
+# Usage: sh /usr/bin/jidu-wan-stream-diag [wan-device] [ifb-device]
+set -u
+
+uci_get() {
+	uci -q get "$1" 2>/dev/null || printf '%s' 'unset'
+}
+
+WAN="$1"
+if [ -z "$WAN" ]; then
+	WAN="$(uci_get qosmate.settings.WAN)"
+fi
+[ -n "$WAN" ] && [ "$WAN" != "unset" ] || WAN="wan"
+IFB="$2"
+[ -n "$IFB" ] || IFB="ifb-$WAN"
+
+section() {
+	printf '\n===== %s =====\n' "$1"
+}
+
+show_value() {
+	printf '%-42s %s\n' "$1" "$2"
+}
+
+section "WAN shaping profile (read-only)"
+show_value "WAN device" "$WAN"
+show_value "Expected IFB device" "$IFB"
+show_value "QoSmate enabled" "$(uci_get qosmate.global.enabled)"
+show_value "Configured upload kbps" "$(uci_get qosmate.settings.UPRATE)"
+show_value "Configured download kbps" "$(uci_get qosmate.settings.DOWNRATE)"
+show_value "Root qdisc" "$(uci_get qosmate.settings.ROOT_QDISC)"
+show_value "Egress priority queue" "$(uci_get qosmate.cake.PRIORITY_QUEUE_EGRESS)"
+show_value "Ingress priority queue" "$(uci_get qosmate.cake.PRIORITY_QUEUE_INGRESS)"
+show_value "CAKE MQ enabled" "$(uci_get qosmate.cake.USE_MQ)"
+show_value "DSCP wash upload" "$(uci_get qosmate.advanced.WASHDSCPUP)"
+show_value "DSCP wash download" "$(uci_get qosmate.advanced.WASHDSCPDOWN)"
+show_value "IPv4 forwarding priority update" "$(sysctl -n net.ipv4.ip_forward_update_priority 2>/dev/null || echo unavailable)"
+show_value "Software flow offload" "$(uci_get firewall.@defaults[0].flow_offloading)"
+show_value "Hardware flow offload" "$(uci_get firewall.@defaults[0].flow_offloading_hw)"
+
+section "Default route"
+ip -4 route show default 2>/dev/null || true
+
+section "WAN qdisc counters"
+tc -s qdisc show dev "$WAN" 2>&1 || true
+
+section "WAN ingress filters"
+tc -s filter show dev "$WAN" ingress 2>&1 || true
+
+section "IFB qdisc counters"
+if [ -d "/sys/class/net/$IFB" ]; then
+	tc -s qdisc show dev "$IFB" 2>&1 || true
+else
+	found=0
+	for path in /sys/class/net/ifb*; do
+		[ -e "$path" ] || continue
+		found=1
+		dev="$(basename "$path")"
+		show_value "Discovered IFB" "$dev"
+		tc -s qdisc show dev "$dev" 2>&1 || true
+	done
+	[ "$found" -eq 1 ] || echo "No IFB interface found."
+fi
+
+section "WAN byte/drop counters"
+for stat in rx_bytes tx_bytes rx_dropped tx_dropped; do
+	file="/sys/class/net/$WAN/statistics/$stat"
+	[ -r "$file" ] && show_value "$stat" "$(cat "$file")"
+done
+
+section "Notes"
+echo "This command makes no configuration changes and does not restart services."
+echo "Run while idle, then during a remote stream, and compare CAKE backlog/drop counters."
+echo "It does not inspect or change Tailscale settings."
