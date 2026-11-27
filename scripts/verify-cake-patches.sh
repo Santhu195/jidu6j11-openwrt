@@ -22,4 +22,13 @@ if [ "$range_count" -ne 3 ]; then
   exit 1
 fi
 
-echo "::notice::CAKE preflight passed: current-tree shaper timer slack patch is present"
+require_text 'static u16 cake_mq_count(' "CAKE-MQ sibling flow-count implementation"
+require_text 'cake_mq_count_hosts(sch, now);' "cross-queue host/flow accounting"
+require_text 'CAKE_MQ_BACKLOG_SHIFT' "backlog-aware CAKE-MQ rate sharing"
+require_text 'rcu_dereference_bh(netdev_get_tx_queue(dev, ntx)->qdisc_sleeping)' "BH-safe sibling qdisc lookup"
+require_text '#include <linux/prandom.h>' "per-tin PRNG header"
+require_text 'struct rnd_state dither;' "per-tin PRNG state"
+require_text '(u16)prandom_u32_state(&q->dither)' "per-tin quantum dithering"
+require_text 'prandom_seed_state(&b->dither, get_random_u64());' "per-tin PRNG initialization"
+
+echo "::notice::CAKE preflight passed: timer slack, CAKE-MQ fairness and per-tin dither are present"
