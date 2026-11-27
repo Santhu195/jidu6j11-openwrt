@@ -12,6 +12,7 @@ OPENWRT_REPO="${OPENWRT_REPO:-https://github.com/openwrt/openwrt.git}"
 OPENWRT_BRANCH="${OPENWRT_BRANCH:-main}"
 OPENWRT_COMMIT="${OPENWRT_COMMIT:-}"
 PR_NUMBER="${PR_NUMBER:-}"
+PR_COMMIT="${PR_COMMIT:-}"
 IWINFO_PRS="${IWINFO_PRS:-}"
 PACKAGES_COMMIT="${PACKAGES_COMMIT:-}"
 TARGET="${TARGET:-qualcommbe}"
@@ -39,8 +40,17 @@ if [ -n "$OPENWRT_COMMIT" ] && [ "$UPSTREAM_SHA" != "$OPENWRT_COMMIT" ]; then
 fi
 PR_SHA=""
 if [ -n "$PR_NUMBER" ]; then
-  git fetch origin "pull/$PR_NUMBER/head"
-  PR_SHA="$(git rev-parse FETCH_HEAD)"
+  if [ -n "$PR_COMMIT" ]; then
+    git fetch origin "$PR_COMMIT"
+    PR_SHA="$(git rev-parse FETCH_HEAD)"
+    if [ "$PR_SHA" != "$PR_COMMIT" ]; then
+      echo "::error::Fetched JIDU support PR SHA does not match pinned baseline: expected $PR_COMMIT, got $PR_SHA"
+      exit 1
+    fi
+  else
+    git fetch origin "pull/$PR_NUMBER/head"
+    PR_SHA="$(git rev-parse FETCH_HEAD)"
+  fi
   git merge --no-edit FETCH_HEAD
 fi
 cat > "$ROOT/build-info.env" <<EOF
