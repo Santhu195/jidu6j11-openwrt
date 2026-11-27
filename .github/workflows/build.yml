@@ -1,7 +1,9 @@
 name: OpenWrt Snapshot Build for Jio AX6000 (JIDU6J11)
 
 on:
-  # Builds are manual or scheduled; pushes (including patch commits) do not start CI.
+  push:
+    branches:
+      - integrate/latest-main-five-patches-qcn-bdf-validated
   workflow_dispatch:
     inputs:
       force:
