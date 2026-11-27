@@ -101,6 +101,16 @@ jobs:
       working-directory: openwrt
       run: make download -j8
 
+    - name: Preflight kernel and wireless patch application
+      working-directory: openwrt
+      run: |
+        set -euo pipefail
+        echo '=== Apply Qualcomm kernel patch series ==='
+        make target/linux/prepare V=s
+        echo '=== Apply mac80211 / ath11k backport patch series ==='
+        make package/kernel/mac80211/prepare V=s
+        echo '=== Patch preflight passed; full build may proceed ==='
+
     - name: Build
       working-directory: openwrt
       run: make -j"$(($(nproc) + 1))" || make -j1 V=s
