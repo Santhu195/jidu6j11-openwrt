@@ -385,7 +385,17 @@ jobs:
 
         ls -lh out
 
+    - name: Upload experimental build artifacts
+      if: github.ref != 'refs/heads/integrate/latest-main-five-patches-qcn-bdf-validated'
+      uses: actions/upload-artifact@v4
+      with:
+        name: jidu6j11-cake-mq-experiment-${{ github.run_id }}
+        path: out/*
+        if-no-files-found: error
+        retention-days: 14
+
     - name: Publish release
+      if: github.ref == 'refs/heads/integrate/latest-main-five-patches-qcn-bdf-validated'
       env:
         GH_TOKEN: ${{ github.token }}
         HASH: ${{ needs.check.outputs.hash }}
