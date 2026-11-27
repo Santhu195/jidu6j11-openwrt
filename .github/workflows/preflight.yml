@@ -7,6 +7,7 @@ on:
       - integrate/latest-main-five-patches-qcn-bdf-validated
       - experiment/jidu6j11-ath11k-ahb-affinity
       - experiment/jidu6j11-ahb-affinity-wifi-rss-rps
+      - experiment/jidu6j11-ahb-rss-rps-cake-mq-26177
     paths:
       # Every input copied into or used to prepare the OpenWrt tree.
       - "bdf/**"
