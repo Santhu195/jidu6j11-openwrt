@@ -22,6 +22,14 @@ require_count() {
   fi
 }
 
+require_define_value() {
+  local file="$1" symbol="$2" expected="$3" description="$4"
+  if ! grep -Eq "^[[:space:]]*#define[[:space:]]+${symbol}[[:space:]]+${expected}([[:space:]]|$)" "$file"; then
+    echo "::error::Ath11k preflight: ${description} must be ${expected} in ${file}"
+    exit 1
+  fi
+}
+
 DP="$SRC/drivers/net/wireless/ath/ath11k/dp.c"
 DPH="$SRC/drivers/net/wireless/ath/ath11k/dp.h"
 DPTX="$SRC/drivers/net/wireless/ath/ath11k/dp_tx.c"
@@ -84,8 +92,14 @@ require_text "$DPRX" "ath11k_dp_rx_alloc_skb" "private RX skb allocator"
 require_text "$PCIC" "irq_set_affinity_and_hint" "PCI IRQ affinity placement"
 require_text "$PCIC" "irq_update_affinity_hint" "PCI IRQ affinity cleanup"
 require_text "$AHB" "ath11k_ahb_ext_grp_disable(irq_grp);" "idempotent AHB IRQ disable"
-require_text "$DPH" "#define DP_RXDMA_BUF_RING_SIZE" "RXDMA buffer ring size"
-require_text "$DPH" "#define DP_RXDMA_MONITOR_BUF_RING_SIZE" "monitor buffer ring size"
+# Verify the intended 512 MiB-router RX memory profile exactly.
+require_define_value "$DPH" DP_RXDMA_BUF_RING_SIZE 2048 "RXDMA buffer ring"
+require_define_value "$DPH" DP_RXDMA_REFILL_RING_SIZE 2048 "RXDMA refill ring"
+require_define_value "$DPH" DP_RXDMA_ERR_DST_RING_SIZE 1024 "RXDMA error destination ring"
+require_define_value "$DPH" DP_RXDMA_MON_STATUS_RING_SIZE 256 "RX monitor status ring"
+require_define_value "$DPH" DP_RXDMA_MONITOR_BUF_RING_SIZE 256 "RX monitor buffer ring"
+require_define_value "$DPH" DP_RXDMA_MONITOR_DST_RING_SIZE 512 "RX monitor destination ring"
+require_define_value "$DPH" DP_RXDMA_MONITOR_DESC_RING_SIZE 256 "RX monitor descriptor ring"
 
 # The experimental IDR-capacity patch that failed compilation must stay absent.
 if grep -Fq "ath11k_dp_tx_idr_remove" "$DPTX"; then

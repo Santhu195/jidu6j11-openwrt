@@ -215,13 +215,30 @@ for pkg in kmod-ath11k-ahb kmod-ath11k-pci ath11k-firmware-ipq9574 \
   fi
 done
 
-if [ "$(grep -Fc 'qcom,ath11k-calibration-variant = "JIDU6611";' "$JIDU_DTS")" -ne 2 ] ||
-   ! grep -Fq 'compatible = "jiorouter,ax6000-jidu6611"' "$JIDU_DTS"; then
-  echo "::error::JIDU6611 DTS compatibility or both radio calibration variants are missing"
-  exit 1
-fi
+# Every SKU must select its own calibration variant in both radio nodes.
+for sku in 6111 6411 6611 6711 6811 6911; do
+  variant="JIDU${sku}"
+  sku_dts="target/linux/qualcommbe/dts/ipq9554-jiorouter-ax6000-jidu${sku}.dts"
+  if [ ! -s "$sku_dts" ]; then
+    echo "::error::Missing JIDU${sku} device tree: $sku_dts"
+    exit 1
+  fi
+  if [ "$(grep -Fc "qcom,ath11k-calibration-variant = \"${variant}\";" "$sku_dts")" -ne 2 ] ||
+     ! grep -Fq "compatible = \"jiorouter,ax6000-jidu${sku}\"" "$sku_dts"; then
+    echo "::error::JIDU${sku} DTS must select ${variant} for both AHB and PCI radios"
+    exit 1
+  fi
+  if ! grep -Fq "define Device/jiorouter_ax6000-jidu${sku}" "$IMAGE_MK" ||
+     ! grep -Fq "DEVICE_VARIANT := ${variant}" "$IMAGE_MK" ||
+     ! grep -Fq "TARGET_DEVICES += jiorouter_ax6000-jidu${sku}" "$IMAGE_MK"; then
+    echo "::error::JIDU${sku} image profile is incomplete or missing its matching variant"
+    exit 1
+  fi
+done
 
-for item in 'label = "0:ART";' 'label = "0:BDF";' 'cal_ahb:' 'cal_pci:'; do
+for item in 'label = "0:ART";' 'label = "0:BDF";' \
+            'cal_ahb: calibration@1000' 'reg = <0x1000 0x20000>;' \
+            'cal_pci: calibration@4c000' 'reg = <0x4c000 0x20000>;'; do
   if ! grep -Fq "$item" "$JIDU_COMMON_DTS"; then
     echo "::error::JIDU common DTS is missing required calibration/partition item: $item"
     exit 1
