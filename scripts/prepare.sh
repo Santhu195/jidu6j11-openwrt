@@ -70,7 +70,7 @@ if [ -d "$ROOT/bdf" ]; then
   # The local BDF overlay changes the generated ipq-wifi package payload.
   # Bump its release so distinct board-data contents never share a version.
   IPQ_WIFI_MAKEFILE="package/firmware/ipq-wifi/Makefile"
-  if ! grep -qx 'PKG_RELEASE:=3' "$IPQ_WIFI_MAKEFILE"; then
+  if ! grep -qx 'PKG_RELEASE:=2' "$IPQ_WIFI_MAKEFILE"; then
     echo "::error::Unexpected ipq-wifi PKG_RELEASE; review the local BDF package version bump"
     exit 1
   fi
