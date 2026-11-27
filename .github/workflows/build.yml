@@ -5,6 +5,7 @@ on:
     branches:
       - integrate/latest-main-five-patches-qcn-bdf-validated
       - experiment/jidu6j11-ahb-rss-rps-cake-mq-26177
+      - experiment/jidu6j11-remote-streaming-wan-shaping
     # Workflow-only maintenance commits must not start an expensive image build.
     paths-ignore:
       - ".github/workflows/build.yml"
