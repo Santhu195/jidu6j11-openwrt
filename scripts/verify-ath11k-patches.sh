@@ -102,6 +102,14 @@ fi
 require_text "$DP" "ath11k_dp_service_rx_refill(ab, grp_id);" "RX refill service before budgeted handlers"
 require_text "$DPRX" "ATH11K_DP_RX_REFILL_CHUNK" "batched RX refill IDs"
 require_text "$DPRX" "skb_set_hash(msdu," "hardware RX flow hash propagation"
+require_text "$DPRX" "static void ath11k_dp_rx_h_hash" "hardware RX flow-hash helper"
+require_text "$DPRX" "rx_desc_get_flow_id_toeplitz" "hardware Toeplitz flow-hash descriptor accessor"
+require_text "$SRC/drivers/net/wireless/ath/ath11k/hw.h" "rx_desc_get_flow_id_toeplitz" "hardware flow-hash hw_ops declaration"
+require_text "$SRC/drivers/net/wireless/ath/ath11k/hw.c" "rx_desc_get_flow_id_toeplitz = ath11k_hw_ipq8074_rx_desc_get_flow_id_toeplitz" "IPQ9574/IPQ8074 flow-hash accessor wiring"
+if grep -Eq "rx_hash_(set|zero)" "$COREH" "$SRC/drivers/net/wireless/ath/ath11k/debugfs.c"; then
+  echo "::error::Ath11k preflight: unsupported optional RX hash debug counters must not be referenced"
+  exit 1
+fi
 require_text "$DPRX" "RX_MSDU_START_INFO2_IP_FIXED_HDR_VALID" "RX checksum verification only after parsed IP header"
 require_text "$DPRX" "FIELD_GET(RX_MSDU_DESC_INFO0_MSDU_LENGTH, info0)" "bounded RX page-pool DMA sync length"
 require_text "$DPRX" "dp->reo_dst_cont[ring_id]" "RX continuation-chain DMA sync tracking"
