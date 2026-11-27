@@ -31,4 +31,10 @@ require_text 'struct rnd_state dither;' "per-tin PRNG state"
 require_text '(u16)prandom_u32_state(&q->dither)' "per-tin quantum dithering"
 require_text 'prandom_seed_state(&b->dither, get_random_u64());' "per-tin PRNG initialization"
 
+# Guard against accidentally integrating PPPoE-only transmit changes in this DHCP-WAN build.
+if grep -Fq 'cake_pppoe_xmit' "$CAKE"; then
+  echo "::error::CAKE preflight: unexpected PPPoE lockless transmit path in DHCP-WAN integration"
+  exit 1
+fi
+
 echo "::notice::CAKE preflight passed: timer slack, CAKE-MQ fairness and per-tin dither are present"
