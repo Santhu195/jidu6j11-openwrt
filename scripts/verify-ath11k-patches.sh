@@ -122,6 +122,61 @@ if grep -Fq "ath11k_rx_refill_early" "$DPRX"; then
 fi
 require_text "$DP" "ath11k_dp_service_rx_refill(ab, grp_id);" "RX refill service before budgeted handlers"
 require_text "$DPRX" "ATH11K_DP_RX_REFILL_CHUNK" "batched RX refill IDs"
+# Catch accidental double-diff-prefix additions that patch(1) would turn
+# into literal '+' tokens in C source (previously caused dp_rx.c compilation failure).
+if grep -Eq '^[[:space:]]*\\+[[:space:]]*(return;|})[[:space:]]*require_text "$DPRX" "static void ath11k_dp_rx_h_hash" "hardware RX flow-hash helper"
+require_text "$DPRX" "rx_desc_get_flow_id_toeplitz" "hardware Toeplitz flow-hash descriptor accessor"
+require_text "$SRC/drivers/net/wireless/ath/ath11k/hw.h" "rx_desc_get_flow_id_toeplitz" "hardware flow-hash hw_ops declaration"
+require_text "$SRC/drivers/net/wireless/ath/ath11k/hw.c" "rx_desc_get_flow_id_toeplitz = ath11k_hw_ipq8074_rx_desc_get_flow_id_toeplitz" "IPQ9574/IPQ8074 flow-hash accessor wiring"
+if grep -Eq "rx_hash_(set|zero)" "$COREH" "$SRC/drivers/net/wireless/ath/ath11k/debugfs.c"; then
+  echo "::error::Ath11k preflight: unsupported optional RX hash debug counters must not be referenced"
+  exit 1
+fi
+require_text "$DPRX" "RX_MSDU_START_INFO2_IP_FIXED_HDR_VALID" "RX checksum verification only after parsed IP header"
+require_text "$DPRX" "FIELD_GET(RX_MSDU_DESC_INFO0_MSDU_LENGTH, info0)" "bounded RX page-pool DMA sync length"
+require_text "$DPRX" "dp->reo_dst_cont[ring_id]" "RX continuation-chain DMA sync tracking"
+require_text "$SRC/drivers/net/wireless/ath/ath11k/hal.c" "ath11k_hal_srng_dst_sync" "batched cached destination-ring DMA sync"
+# The source-ring cached tail-pointer optimization belongs to the deferred
+# 999z11 ring-pointer patch, whose dp_tx.c/mac.c hunks do not apply cleanly to
+# this pinned backports-7.2 tree. Keep the destination-ring sync checks below;
+# do not require an implementation that is deliberately not in this patch set.
+require_text "$DPTX" "napi_consume_skb(msdu, budget);" "batched TX completion skb frees"
+require_text "$MAC" "ath11k_mac_txq_work" "deferred TXQ bottom-half work"
+require_text "$MAC" "set_bit(txq->ac, &ar->txq_woken);" "coalesced TXQ access-category recording"
+require_text "$MAC" "queue_work(system_bh_wq, &ar->txq_work);" "bottom-half TXQ wake scheduling"
+require_text "$MAC" "cancel_work_sync(&ar->txq_work);" "TXQ work teardown synchronization"
+require_text "$COREH" "unsigned long txq_woken;" "pending TXQ access-category bitset"
+require_text "$PCIC" "irq_set_affinity_and_hint" "PCI IRQ affinity placement"
+require_text "$PCIC" "irq_update_affinity_hint" "PCI IRQ affinity cleanup"
+require_text "$AHB" "ath11k_ahb_ext_grp_disable(irq_grp);" "idempotent AHB IRQ disable"
+# Keep AHB DP-ring interrupts distributed while leaving copy-engine groups on their default CPU.
+require_text "$AHB" "static int ath11k_ahb_ext_irq_cpu(struct ath11k_base *ab, int i)" "AHB DP-ring CPU mapper"
+require_text "$AHB" "ab->hw_params.ring_mask->rx[i]" "AHB REO ring affinity lookup"
+require_text "$AHB" "ab->hw_params.ring_mask->tx[i]" "AHB TX completion ring affinity lookup"
+require_text "$AHB" "cpumask_nth((ffs(rx) - 1) % num_online_cpus()," "AHB RX ring CPU distribution"
+require_text "$AHB" "cpumask_nth((ffs(tx) - 1) % num_online_cpus()," "AHB TX ring CPU distribution"
+require_text "$AHB" "irq_set_affinity_and_hint(ab->irq_num[irq_grp->irqs[j]]," "AHB DP IRQ affinity hint"
+require_text "$AHB" "irq_update_affinity_hint(ab->irq_num[irq_grp->irqs[j]], NULL);" "AHB DP IRQ affinity cleanup"
+# Verify the intended 512 MiB-router RX memory profile exactly.
+require_define_value "$DPH" DP_RXDMA_BUF_RING_SIZE 2048 "RXDMA buffer ring"
+require_define_value "$DPH" DP_RXDMA_REFILL_RING_SIZE 2048 "RXDMA refill ring"
+require_define_value "$DPH" DP_RXDMA_ERR_DST_RING_SIZE 1024 "RXDMA error destination ring"
+require_define_value "$DPH" DP_RXDMA_MON_STATUS_RING_SIZE 256 "RX monitor status ring"
+require_define_value "$DPH" DP_RXDMA_MONITOR_BUF_RING_SIZE 256 "RX monitor buffer ring"
+require_define_value "$DPH" DP_RXDMA_MONITOR_DST_RING_SIZE 512 "RX monitor destination ring"
+require_define_value "$DPH" DP_RXDMA_MONITOR_DESC_RING_SIZE 256 "RX monitor descriptor ring"
+
+# The experimental IDR-capacity patch that failed compilation must stay absent.
+if grep -Fq "ath11k_dp_tx_idr_remove" "$DPTX"; then
+  echo "::error::Ath11k preflight: obsolete experimental IDR helper is present"
+  exit 1
+fi
+
+echo "::notice::Ath11k preflight passed: AQL, TXQ scheduling, page-pool RX, RX/TX buffer tables, refill protection, batched TX frees, page-pool RX and IRQ affinity are present"
+ "$DPRX"; then
+  echo "::error::Ath11k preflight: literal '+' diff marker remains before return/brace in dp_rx.c"
+  exit 1
+fi
 require_text "$DPRX" "skb_set_hash(msdu," "hardware RX flow hash propagation"
 require_text "$DPRX" "static void ath11k_dp_rx_h_hash" "hardware RX flow-hash helper"
 require_text "$DPRX" "rx_desc_get_flow_id_toeplitz" "hardware Toeplitz flow-hash descriptor accessor"
