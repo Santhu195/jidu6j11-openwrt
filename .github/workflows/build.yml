@@ -325,7 +325,6 @@ jobs:
         run_stage "OpenWrt host tools" tools-preflight.log tools/compile V=s
         run_stage "OpenWrt cross toolchain" toolchain-preflight.log toolchain/compile V=s
         run_stage "OpenWrt target and kernel prerequisites" target-preflight.log target/compile V=s
-        run_stage "Selected package host tools" package-host-preflight.log package/host-compile V=s
 
         for tool in openssl sed; do
           if [ ! -x "staging_dir/host/bin/$tool" ]; then
@@ -441,7 +440,6 @@ jobs:
           tools-preflight.log
           toolchain-preflight.log
           target-preflight.log
-          package-host-preflight.log
           mac80211-preflight.log
           openwrt-build.log
           libubox-host-clean.log
