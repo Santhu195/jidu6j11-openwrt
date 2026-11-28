@@ -1,9 +1,6 @@
-This marker requests exactly one firmware build for this commit, but only after the matching source-preflight succeeds. The build workflow verifies the branch head and checks for an existing build before compiling.
-
-Build requested 2026-11-28 after CI gate permission fix; run source-preflight for this exact commit before building all six JIDU SKUs.
-
-Build requested 2026-11-28 after patch-application verifier and patch EOF cleanup; build only if preflight on this exact commit succeeds.
-
-Build requested 2026-11-28 after adding a mac80211/ath11k compile gate and retaining OpenWrt package-level failure logs; build only after exact-commit source preflight succeeds.
-
-Build requested 2026-11-28 after validating OpenWrt stage ordering and adding a full selected-package compile gate before rootfs/image installation; build only when exact-commit source preflight succeeds.
+Validated source-preflight run: 46136894336 (success)
+Validated source commit: 64905452b9b824a1b0dac0280c7d5c8cee9c06f8
+OpenWrt: 77c14c5a0a0c21684feff750d0618d24f1393978
+Device profiles: JIDU6111, JIDU6411, JIDU6611, JIDU6711, JIDU6811, JIDU6911
+QoS packages: qosmate and luci-app-qosmate v1.9.0 (local LuCI package release 2)
+Build requirement: wait for source-preflight to pass on this marker commit before compiling.
