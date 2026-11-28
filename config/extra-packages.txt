@@ -43,9 +43,9 @@ kmod-tun
 kmod-zram
 kmod-nat46
 
-# --- SQM / CAKE (preserve current QoS capability) ---
-sqm-scripts
-luci-app-sqm
+# --- QoSmate / CAKE-MQ (preserve the active QoSmate manager) ---
+qosmate
+luci-app-qosmate
 kmod-sched
 kmod-sched-core
 kmod-sched-cake
@@ -56,7 +56,7 @@ kmod-veth
 kmod-ifb
 tc-full
 
-# --- QoSmate runtime prerequisites (QoSmate itself is NOT installed/enabled) ---
+# --- QoSmate LuCI/runtime prerequisites ---
 luci-lib-jsonc
 lua
 jq

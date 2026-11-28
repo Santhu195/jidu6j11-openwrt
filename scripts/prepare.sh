@@ -161,6 +161,32 @@ mkdir -p package/untangled/files/www/untangled
 cp -a "$UNTANGLED_DIR/dist/." package/untangled/files/www/untangled/
 echo "::endgroup::"
 
+echo "::group::Add pinned QoSmate backend and LuCI frontend"
+QOSMATE_BACKEND_SHA="ad5ef37a6b38b651849eccb33670a5398e06c876"
+QOSMATE_LUCI_SHA="f37bc15498f7cbe3cd2cb912d1133551c9a5a738"
+if [ -e package/qosmate ] || [ -e package/luci-app-qosmate ]; then
+  echo "::error::QoSmate package directories already exist; refusing to overwrite an upstream/feed package"
+  exit 1
+fi
+git clone --depth 1 --branch v1.9.0 https://github.com/hudra0/qosmate.git package/qosmate
+git clone --depth 1 --branch v1.9.0 https://github.com/hudra0/luci-app-qosmate.git package/luci-app-qosmate
+backend_sha="$(git -C package/qosmate rev-parse HEAD)"
+luci_sha="$(git -C package/luci-app-qosmate rev-parse HEAD)"
+if [ "$backend_sha" != "$QOSMATE_BACKEND_SHA" ] || [ "$luci_sha" != "$QOSMATE_LUCI_SHA" ]; then
+  echo "::error::QoSmate v1.9.0 source pin mismatch (backend=$backend_sha LuCI=$luci_sha)"
+  exit 1
+fi
+if [ ! -s package/qosmate/Makefile ] || [ ! -s package/luci-app-qosmate/Makefile ]; then
+  echo "::error::QoSmate backend or LuCI package Makefile is missing"
+  exit 1
+fi
+cat >> "$ROOT/build-info.env" <<EOF
+QOSMATE_BACKEND_SHA=$backend_sha
+QOSMATE_LUCI_SHA=$luci_sha
+EOF
+echo "::notice::QoSmate backend and LuCI frontend pinned to v1.9.0 ($backend_sha / $luci_sha)"
+echo "::endgroup::"
+
 if [ -d "$ROOT/files" ]; then
   cp -r "$ROOT/files" files
 fi
@@ -305,7 +331,7 @@ REQUIRED_PACKAGES="
 adguardhome tailscale untangled-full
 etherwake luci-app-wol
 kmod-fs-btrfs btrfs-progs
-sqm-scripts luci-app-sqm tc-full ip-full
+qosmate luci-app-qosmate tc-full ip-full
 kmod-sched kmod-sched-core kmod-sched-cake kmod-sched-ctinfo
 kmod-sched-red kmod-netem kmod-veth kmod-ifb
 luci-lib-jsonc lua jq coreutils-sleep
