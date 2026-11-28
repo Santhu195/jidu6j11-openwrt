@@ -124,7 +124,11 @@ require_text "$DP" "ath11k_dp_service_rx_refill(ab, grp_id);" "RX refill service
 require_text "$DPRX" "ATH11K_DP_RX_REFILL_CHUNK" "batched RX refill IDs"
 # Catch accidental double-diff-prefix additions that patch(1) would turn
 # into literal '+' tokens in C source (previously caused dp_rx.c compilation failure).
-if grep -Eq '^[[:space:]]*\\+[[:space:]]*(return;|})[[:space:]]*require_text "$DPRX" "static void ath11k_dp_rx_h_hash" "hardware RX flow-hash helper"
+if grep -Eq '^[[:space:]]*\+[[:space:]]*(return;|})[[:space:]]*$' "$DPRX"; then
+  echo "::error::Ath11k preflight: literal '+' diff marker remains before return/brace in dp_rx.c"
+  exit 1
+fi
+require_text "$DPRX" "static void ath11k_dp_rx_h_hash" "hardware RX flow-hash helper"
 require_text "$DPRX" "rx_desc_get_flow_id_toeplitz" "hardware Toeplitz flow-hash descriptor accessor"
 require_text "$SRC/drivers/net/wireless/ath/ath11k/hw.h" "rx_desc_get_flow_id_toeplitz" "hardware flow-hash hw_ops declaration"
 require_text "$SRC/drivers/net/wireless/ath/ath11k/hw.c" "rx_desc_get_flow_id_toeplitz = ath11k_hw_ipq8074_rx_desc_get_flow_id_toeplitz" "IPQ9574/IPQ8074 flow-hash accessor wiring"
