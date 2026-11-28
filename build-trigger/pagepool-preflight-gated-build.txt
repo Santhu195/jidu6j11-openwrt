@@ -3,3 +3,5 @@ This marker requests exactly one firmware build for this commit, but only after 
 Build requested 2026-11-28 after CI gate permission fix; run source-preflight for this exact commit before building all six JIDU SKUs.
 
 Build requested 2026-11-28 after patch-application verifier and patch EOF cleanup; build only if preflight on this exact commit succeeds.
+
+Build requested 2026-11-28 after adding a mac80211/ath11k compile gate and retaining OpenWrt package-level failure logs; build only after exact-commit source preflight succeeds.
