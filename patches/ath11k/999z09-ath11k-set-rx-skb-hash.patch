@@ -54,7 +54,7 @@ Signed-off-by: Julius Bairaktaris <julius@bairaktaris.de>
 +	 */
 +	net_get_random_once(&ath11k_rx_hash_seed, sizeof(ath11k_rx_hash_seed));
 +	skb_set_hash(msdu, jhash_1word(hash, ath11k_rx_hash_seed), PKT_HASH_TYPE_L4);
-++}
++}
 +
  static void ath11k_dp_rx_h_csum_offload(struct ath11k *ar, struct sk_buff *msdu)
  {
