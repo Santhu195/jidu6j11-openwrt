@@ -31,6 +31,15 @@ def main() -> int:
             errors.append(f"{path}: patch is not UTF-8: {exc}")
             continue
 
+        # A doubled leading '+' in a unified-diff addition is usually an
+        # accidentally retained patch marker, which would become literal C
+        # source (for example, '+ return;') after patch(1) applies it.
+        for lineno, line in enumerate(lines, 1):
+            if re.fullmatch(r"\\+\\+[ \\t]*(?:return;|})[ \\t]*", line):
+                errors.append(
+                    f"{path}:{lineno}: added C line retains a literal diff '+' before return/brace"
+                )
+
         i = 0
         while i < len(lines):
             match = HUNK_RE.match(lines[i])
