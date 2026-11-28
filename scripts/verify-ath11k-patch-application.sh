@@ -22,10 +22,13 @@ for p in "$REPO_PATCH_DIR"/*.patch; do
 done
 [ "$expected" -gt 0 ] || { echo "::error::No custom ath11k patches found"; exit 1; }
 
-reject="$(find "$SRC" -type f \( -name '*.rej' -o -name '*.orig' \) -print -quit)"
+# patch(1) creates a sibling .orig backup for successfully modified files.
+# Those backups are expected and do not indicate a rejected hunk; .rej files do.
+reject="$(find "$SRC" -type f -name '*.rej' -print -quit)"
 if [ -n "$reject" ]; then
-  echo "::error::Patch reject/backup file remains after mac80211 prepare: $reject"
+  echo "::error::Patch application left a rejected hunk: $reject"
   exit 1
 fi
 
-echo "::notice::All $expected custom ath11k patches are staged byte-identically; ordered mac80211 patch application left no rejects"
+backup_count="$(find "$SRC" -type f -name '*.orig' | wc -l)"
+echo "::notice::All $expected custom ath11k patches are staged byte-identically; no rejected hunks remain ($backup_count normal patch backups)"
