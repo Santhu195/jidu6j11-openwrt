@@ -291,8 +291,8 @@ jobs:
 
         echo "::notice::Pre-build patch validation passed; no compilation performed"
 
-    - name: Compile OpenWrt prerequisites and critical wireless stack
-      id: wireless_preflight
+    - name: Compile all selected packages before image generation
+      id: package_preflight
       working-directory: openwrt
       env:
         BUILD_TIME_LOG: build-time.log
@@ -333,15 +333,15 @@ jobs:
           fi
         done
 
-        echo "::notice::Host tools, cross toolchain and target kernel prerequisites are ready; compiling mac80211/ath11k."
-        run_stage "mac80211 regular variant (includes patched ath11k)" mac80211-preflight.log package/kernel/mac80211/compile V=s
+        echo "::notice::Host tools, cross toolchain and target kernel prerequisites are ready; compiling every selected package before rootfs/image installation."
+        run_stage "All selected OpenWrt packages (includes mac80211/ath11k)" package-preflight.log package/compile V=s
 
         if [ -s logs/package/kernel/mac80211/compile.txt ]; then
-          echo "::notice::mac80211 package compiler log captured at logs/package/kernel/mac80211/compile.txt"
+          echo "::notice::mac80211/ath11k package compiler log captured at logs/package/kernel/mac80211/compile.txt"
         else
-          echo "::warning::OpenWrt did not emit logs/package/kernel/mac80211/compile.txt; verbose stage transcript will be retained."
+          echo "::warning::No mac80211 package compile.txt was emitted; all package-stage output remains in the verbose transcript."
         fi
-        echo "::notice::mac80211/ath11k compile preflight passed; the full build can reuse these compiled objects."
+        echo "::notice::All selected package compile targets passed; the full build can reuse their built objects."
 
     - name: Build
       id: build
@@ -432,7 +432,7 @@ jobs:
         cat feeds.conf
 
     - name: Upload build and preflight failure diagnostics
-      if: ${{ always() && (steps.wireless_preflight.outcome == 'failure' || steps.build.outcome == 'failure') }}
+      if: ${{ always() && (steps.package_preflight.outcome == 'failure' || steps.build.outcome == 'failure') }}
       uses: actions/upload-artifact@v4
       with:
         name: openwrt-build-diagnostics-${{ github.run_id }}
@@ -440,7 +440,7 @@ jobs:
           tools-preflight.log
           toolchain-preflight.log
           target-preflight.log
-          mac80211-preflight.log
+          package-preflight.log
           openwrt-build.log
           libubox-host-clean.log
           libubox-host-diagnostic.log
