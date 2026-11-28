@@ -46,7 +46,7 @@ Signed-off-by: Julius Bairaktaris <julius@bairaktaris.de>
 +
 +	hash = ar->ab->hw_params.hw_ops->rx_desc_get_flow_id_toeplitz(rxcb->rx_desc);
 +	if (!hash) {
-++		return;
++		return;
 +	}
 +
 +	/* Make the hash differ per boot, so that a station cannot aim
