@@ -187,8 +187,6 @@ fi
 # part of the package and bump the local package release for this packaging fix.
 python3 - <<'PY'
 from pathlib import Path
-import re
-
 makefile = Path("package/luci-app-qosmate/Makefile")
 data = makefile.read_bytes()
 install = b"\t$(INSTALL_BIN) ./root/usr/libexec/rpcd/luci.qosmate $(1)/usr/libexec/rpcd/"
@@ -196,12 +194,13 @@ if data.count(install) != 1:
     raise SystemExit("Expected exactly one luci.qosmate RPC install line")
 if b"luci.qosmate_stats" in data:
     raise SystemExit("QoSmate statistics RPC helper is already referenced in the package Makefile")
-newline = b"\\r\\n" if b"\\r\\n" in data else b"\\n"
+newline = bytes((13, 10)) if bytes((13, 10)) in data else bytes((10,))
 data = data.replace(install, install + newline +
     b"\t$(INSTALL_BIN) ./root/usr/libexec/rpcd/luci.qosmate_stats $(1)/usr/libexec/rpcd/", 1)
-data, count = re.subn(rb"(?m)^PKG_RELEASE:=1\\r?$", b"PKG_RELEASE:=2", data)
-if count != 1:
+release = b"PKG_RELEASE:=1"
+if data.count(release) != 1:
     raise SystemExit("Expected exactly one PKG_RELEASE:=1 in luci-app-qosmate Makefile")
+data = data.replace(release, b"PKG_RELEASE:=2", 1)
 makefile.write_bytes(data)
 PY
 if ! grep -Fq 'luci.qosmate_stats $(1)/usr/libexec/rpcd/' package/luci-app-qosmate/Makefile; then
