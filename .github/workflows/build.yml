@@ -322,7 +322,6 @@ jobs:
         # the normal world build needs. Keep their outputs in this workspace
         # so the subsequent full build can reuse them.
         run_stage "OpenWrt host tools and cross toolchain" prepare-preflight.log prepare V=s
-        run_stage "OpenWrt target/kernel prerequisites" target-preflight.log target/compile V=s
 
         for tool in openssl sed; do
           if [ ! -x "staging_dir/host/bin/$tool" ]; then
@@ -440,7 +439,7 @@ jobs:
         path: |
           tools-preflight.log
           toolchain-preflight.log
-          target-preflight.log
+          prepare-preflight.log
           mac80211-preflight.log
           openwrt-build.log
           libubox-host-clean.log
