@@ -141,7 +141,10 @@ require_text "$SRC/drivers/net/wireless/ath/ath11k/hal.c" "ath11k_hal_srng_dst_s
 # do not require an implementation that is deliberately not in this patch set.
 require_text "$DPTX" "napi_consume_skb(msdu, budget);" "batched TX completion skb frees"
 require_text "$MAC" "ath11k_mac_txq_work" "deferred TXQ bottom-half work"
-require_text "$MAC" "work_pending(&ar->txq_work)" "coalesced TXQ wake work"
+require_text "$MAC" "set_bit(txq->ac, &ar->txq_woken);" "coalesced TXQ access-category recording"
+require_text "$MAC" "queue_work(system_bh_wq, &ar->txq_work);" "bottom-half TXQ wake scheduling"
+require_text "$MAC" "cancel_work_sync(&ar->txq_work);" "TXQ work teardown synchronization"
+require_text "$COREH" "unsigned long txq_woken;" "pending TXQ access-category bitset"
 require_text "$PCIC" "irq_set_affinity_and_hint" "PCI IRQ affinity placement"
 require_text "$PCIC" "irq_update_affinity_hint" "PCI IRQ affinity cleanup"
 require_text "$AHB" "ath11k_ahb_ext_grp_disable(irq_grp);" "idempotent AHB IRQ disable"
