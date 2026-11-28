@@ -291,6 +291,24 @@ jobs:
 
         echo "::notice::Pre-build patch validation passed; no compilation performed"
 
+    - name: Compile critical wireless stack before full image build
+      id: wireless_preflight
+      working-directory: openwrt
+      env:
+        BUILD_TIME_LOG: build-time.log
+        CCACHE_DIR: ${{ github.workspace }}/cache/ccache
+      shell: bash
+      run: |
+        set -Eeuo pipefail
+        echo "::notice::Compiling the selected mac80211 regular variant, including the patched ath11k modules, before starting the full image build."
+        make -j"$(($(nproc) + 1))" package/kernel/mac80211/compile V=s 2>&1 | tee ../mac80211-preflight.log
+        if [ -s logs/package/kernel/mac80211/compile.txt ]; then
+          echo "::notice::mac80211 compile log captured at logs/package/kernel/mac80211/compile.txt"
+        else
+          echo "::warning::OpenWrt did not emit the expected mac80211 compile.txt; the verbose preflight transcript will be retained."
+        fi
+        echo "::notice::mac80211/ath11k compile preflight passed; the full build can reuse these compiled objects."
+
     - name: Build
       id: build
       working-directory: openwrt
@@ -379,15 +397,19 @@ jobs:
         fi
         cat feeds.conf
 
-    - name: Upload build failure diagnostics
-      if: ${{ always() && steps.build.outcome == 'failure' }}
+    - name: Upload build and preflight failure diagnostics
+      if: ${{ always() && (steps.wireless_preflight.outcome == 'failure' || steps.build.outcome == 'failure') }}
       uses: actions/upload-artifact@v4
       with:
         name: openwrt-build-diagnostics-${{ github.run_id }}
         path: |
+          mac80211-preflight.log
           openwrt-build.log
           libubox-host-clean.log
           libubox-host-diagnostic.log
+          openwrt/logs/package/kernel/mac80211/**
+          openwrt/logs/package/kernel/linux/**
+          openwrt/logs/target/linux/**
         if-no-files-found: warn
         retention-days: 14
 
