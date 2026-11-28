@@ -26,6 +26,7 @@ on:
     - cron: "30 20 * * *" # 02:00 IST, daily
 
 permissions:
+  actions: read
   contents: write
 
 env:
