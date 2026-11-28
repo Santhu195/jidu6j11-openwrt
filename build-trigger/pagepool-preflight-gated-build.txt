@@ -1,1 +1,3 @@
 This marker requests exactly one firmware build for this commit, but only after the matching source-preflight succeeds. The build workflow verifies the branch head and checks for an existing build before compiling.
+
+Build requested 2026-11-28 after CI gate permission fix; run source-preflight for this exact commit before building all six JIDU SKUs.
