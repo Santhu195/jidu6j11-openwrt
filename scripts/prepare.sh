@@ -176,10 +176,39 @@ if [ "$backend_sha" != "$QOSMATE_BACKEND_SHA" ] || [ "$luci_sha" != "$QOSMATE_LU
   echo "::error::QoSmate v1.9.0 source pin mismatch (backend=$backend_sha LuCI=$luci_sha)"
   exit 1
 fi
-if [ ! -s package/qosmate/Makefile ] || [ ! -s package/luci-app-qosmate/Makefile ]; then
-  echo "::error::QoSmate backend or LuCI package Makefile is missing"
+if [ ! -s package/qosmate/Makefile ] || [ ! -s package/luci-app-qosmate/Makefile ] ||
+   [ ! -s package/luci-app-qosmate/root/usr/libexec/rpcd/luci.qosmate_stats ]; then
+  echo "::error::QoSmate backend/LuCI Makefile or statistics RPC helper is missing"
   exit 1
 fi
+
+# Upstream v1.9.0 ships the luci.qosmate_stats RPC helper and its statistics
+# view, but the package Makefile omits installing that helper. Install it as
+# part of the package and bump the local package release for this packaging fix.
+python3 - <<'PY'
+from pathlib import Path
+import re
+
+makefile = Path("package/luci-app-qosmate/Makefile")
+data = makefile.read_bytes()
+install = b"\t$(INSTALL_BIN) ./root/usr/libexec/rpcd/luci.qosmate $(1)/usr/libexec/rpcd/"
+if data.count(install) != 1:
+    raise SystemExit("Expected exactly one luci.qosmate RPC install line")
+if b"luci.qosmate_stats" in data:
+    raise SystemExit("QoSmate statistics RPC helper is already referenced in the package Makefile")
+newline = b"\\r\\n" if b"\\r\\n" in data else b"\\n"
+data = data.replace(install, install + newline +
+    b"\t$(INSTALL_BIN) ./root/usr/libexec/rpcd/luci.qosmate_stats $(1)/usr/libexec/rpcd/", 1)
+data, count = re.subn(rb"(?m)^PKG_RELEASE:=1\\r?$", b"PKG_RELEASE:=2", data)
+if count != 1:
+    raise SystemExit("Expected exactly one PKG_RELEASE:=1 in luci-app-qosmate Makefile")
+makefile.write_bytes(data)
+PY
+if ! grep -Fq 'luci.qosmate_stats $(1)/usr/libexec/rpcd/' package/luci-app-qosmate/Makefile; then
+  echo "::error::QoSmate statistics RPC helper is not installed by the LuCI package"
+  exit 1
+fi
+
 cat >> "$ROOT/build-info.env" <<EOF
 QOSMATE_BACKEND_SHA=$backend_sha
 QOSMATE_LUCI_SHA=$luci_sha
