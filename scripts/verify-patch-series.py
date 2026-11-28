@@ -35,7 +35,7 @@ def main() -> int:
         # accidentally retained patch marker, which would become literal C
         # source (for example, '+ return;') after patch(1) applies it.
         for lineno, line in enumerate(lines, 1):
-            if re.fullmatch(r"\\+\\+[ \\t]*(?:return;|})[ \\t]*", line):
+            if re.fullmatch(r"\+\+[ \t]*(?:return;|})[ \t]*", line):
                 errors.append(
                     f"{path}:{lineno}: added C line retains a literal diff '+' before return/brace"
                 )
