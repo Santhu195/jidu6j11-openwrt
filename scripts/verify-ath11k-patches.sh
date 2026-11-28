@@ -135,7 +135,10 @@ require_text "$DPRX" "RX_MSDU_START_INFO2_IP_FIXED_HDR_VALID" "RX checksum verif
 require_text "$DPRX" "FIELD_GET(RX_MSDU_DESC_INFO0_MSDU_LENGTH, info0)" "bounded RX page-pool DMA sync length"
 require_text "$DPRX" "dp->reo_dst_cont[ring_id]" "RX continuation-chain DMA sync tracking"
 require_text "$SRC/drivers/net/wireless/ath/ath11k/hal.c" "ath11k_hal_srng_dst_sync" "batched cached destination-ring DMA sync"
-require_text "$SRC/drivers/net/wireless/ath/ath11k/hal.c" "ath11k_hal_srng_src_sync_tp" "lazy source-ring hardware pointer reads"
+# The source-ring cached tail-pointer optimization belongs to the deferred
+# 999z11 ring-pointer patch, whose dp_tx.c/mac.c hunks do not apply cleanly to
+# this pinned backports-7.2 tree. Keep the destination-ring sync checks below;
+# do not require an implementation that is deliberately not in this patch set.
 require_text "$DPTX" "napi_consume_skb(msdu, budget);" "batched TX completion skb frees"
 require_text "$MAC" "ath11k_mac_txq_work" "deferred TXQ bottom-half work"
 require_text "$MAC" "work_pending(&ar->txq_work)" "coalesced TXQ wake work"
