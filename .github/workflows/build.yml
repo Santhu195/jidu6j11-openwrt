@@ -291,7 +291,7 @@ jobs:
 
         echo "::notice::Pre-build patch validation passed; no compilation performed"
 
-    - name: Compile all selected packages before image generation
+    - name: Preflight only the failing wireless package
       id: package_preflight
       working-directory: openwrt
       env:
@@ -318,30 +318,31 @@ jobs:
           fi
         }
 
-        # OpenWrt package targets assume the host tools, cross toolchain and
-        # target kernel/toolchain stage have already been built by world.
-        # Build those prerequisites in the same order as the normal world
-        # dependency graph before invoking a package target directly.
-        run_stage "OpenWrt host tools" tools-preflight.log tools/compile V=s
-        run_stage "OpenWrt cross toolchain" toolchain-preflight.log toolchain/compile V=s
-        run_stage "OpenWrt target and kernel prerequisites" target-preflight.log target/compile V=s
+        # Use the same OpenWrt host/toolchain and target prerequisites that
+        # the normal world build needs. Keep their outputs in this workspace
+        # so the subsequent full build can reuse them.
+        run_stage "OpenWrt host tools and cross toolchain" prepare-preflight.log prepare V=s
+        run_stage "OpenWrt target/kernel prerequisites" target-preflight.log target/compile V=s
 
         for tool in openssl sed; do
           if [ ! -x "staging_dir/host/bin/$tool" ]; then
-            echo "::error::OpenWrt host prerequisite is missing after tools/compile: staging_dir/host/bin/$tool"
+            echo "::error::OpenWrt host prerequisite is missing after make prepare: staging_dir/host/bin/$tool"
             exit 1
           fi
         done
 
-        echo "::notice::Host tools, cross toolchain and target kernel prerequisites are ready; compiling every selected package before rootfs/image installation."
-        run_stage "All selected OpenWrt packages (includes mac80211/ath11k)" package-preflight.log package/compile V=s
+        # The previous full build stopped at this exact package. Compile only
+        # this variant first; do not compile the other ~300 selected packages
+        # a second time in a separate gate.
+        echo "::notice::Compiling only mac80211 regular (patched ath11k) before the remaining package build."
+        run_stage "mac80211 regular variant (includes patched ath11k)" mac80211-preflight.log package/kernel/mac80211/compile V=s
 
         if [ -s logs/package/kernel/mac80211/compile.txt ]; then
-          echo "::notice::mac80211/ath11k package compiler log captured at logs/package/kernel/mac80211/compile.txt"
+          echo "::notice::mac80211 package compiler log captured at logs/package/kernel/mac80211/compile.txt"
         else
-          echo "::warning::No mac80211 package compile.txt was emitted; all package-stage output remains in the verbose transcript."
+          echo "::warning::No mac80211 package compile.txt was emitted; verbose package transcript will be retained."
         fi
-        echo "::notice::All selected package compile targets passed; the full build can reuse their built objects."
+        echo "::notice::mac80211/ath11k compile preflight passed; continuing with the remaining OpenWrt build in this same workspace."
 
     - name: Build
       id: build
@@ -440,7 +441,7 @@ jobs:
           tools-preflight.log
           toolchain-preflight.log
           target-preflight.log
-          package-preflight.log
+          mac80211-preflight.log
           openwrt-build.log
           libubox-host-clean.log
           libubox-host-diagnostic.log
